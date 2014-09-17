@@ -2,14 +2,6 @@
 # Name: Andrew Rosiclair
 # SBU ID: 109235970
 
-#AbcD result
-# 2's complement: 	268501011	0x10010013	00010000000000010000000000010011	268501011
-# 1's complement:	268501011	0x10010013	00010000000000010000000000010011	268501011
-# Sign Magnitude:	268501011	0x10010013	00010000000000010000000000010011	268501011
-# Neg 2's complement: 	-268501011	0xeffeffed	11101111111111101111111111101101	-268501011
-# 16-bit 2's comp: 	19		0x00000013	00000000000000000000000000010011	19
-
-
 .text
 .globl main
 main:
@@ -19,16 +11,19 @@ main:
 	li $v0,4		#Print the prompt
 	syscall
 	
-	li $v0,5		#Read the entered integer
+	li $v0,8
+	la $a0,input
+	li $a1,5	#Read the string
 	syscall
 	
-	la $t0,($v0)	#Load the result into a temp address
+	la $t0,input	#Load the result into a temp address
 	b twos			#call the twos label
 
 twos:	#--------------------------TWO'S COMPLEMENT REPRESENTATIONS---------------------------------
 
 	li $v0,4		
 	la $a0,twosLabel
+	la $a1,($zero)
 	syscall
 	li $v0,1		#Print integer value
 	la $a0,($t0)
@@ -230,8 +225,9 @@ sixBitTwos: #-------------------------- 16-BIT TWO'S REPRESENTATIONS------------
 	
 	
 .data
-	prompt: .asciiz "Enter an integer.\n"
+	prompt: .asciiz "Enter a string.\n"
 	tab: .asciiz "\t"
+	input: .space 4
 	
 	#Numerical format labels
 	twosLabel: .asciiz "\n2's complement:\t"
