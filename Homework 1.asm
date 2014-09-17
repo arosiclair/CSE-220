@@ -113,9 +113,15 @@ signMag:	#--------------------------SIGNED MAGNITUDE REPRESENTATIONS------------
 	li $v0,4		
 	la $a0,tab
 	syscall
-	#and $t1,$t0,$t0 #AND the input
-	neg $t1,$t0		#Negate the new integer
-	addi $t1,$t1,1		#increment the neg number
+	addi $t1,$t0,-1 #decrement the input and store it in $t1
+	neg $t1,$t1		#Negate the new integer
+	
+	bltz $t0,signNeg	#Branch to handle both positive and negative inputs.
+	b signPos
+	
+signNeg:
+
+	ori $t1,$t1,10000000000000000000000000000000	#Flip the first bit
 	la $a0,($t1)
 	li $v0,34		#Print hex repesentation
 	syscall
@@ -128,14 +134,32 @@ signMag:	#--------------------------SIGNED MAGNITUDE REPRESENTATIONS------------
 	li $v0,4
 	la $a0,tab
 	syscall
-	#neg $t0,$t0		#Negate the integer again
-	#addi $t0,$t0,1	#increment input
 	li $v0,101		#Print SM integer representation
 	la $a0,($t0)
 	syscall
 	
 	b negTwos
 
+signPos:
+
+	la $a0,($t1)
+	li $v0,34		#Print hex repesentation
+	syscall
+	li $v0,4
+	la $a0,tab
+	syscall
+	li $v0,35		#Print binary representation
+	la $a0,($t1)
+	syscall
+	li $v0,4
+	la $a0,tab
+	syscall
+	li $v0,101		#Print SM integer representation
+	la $a0,($t1)
+	syscall
+	
+	b negTwos
+	
 negTwos:
 
 	li $v0,4	#Print Negative Two's Label
