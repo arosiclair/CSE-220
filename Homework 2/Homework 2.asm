@@ -23,7 +23,7 @@ openFile:
 	#-------------------------------------OPEN THE FILE------------------------------------------
 	li $v0,13		#Open the file
 	la $a0,file		#Use the entered directory		
-	li $a1,1		#Set flag to read
+	li $a1,0		#Set flag to read
 	li $a2,0		#Ignore mode	
 	syscall			#The result of opening the file is stored in $v0
 	
@@ -45,16 +45,16 @@ removeNull:
 	
 checkBOM:
 	
-	li $t2,0xEFBBBF		#The BOM byte for UTF-8 encoding
+	li $t2,0xBFBBEF	#The BOM byte for UTF-8 encoding in little endian order
 	li $v0,14 		#Prepare to read file 1 byte at a time
 	add	$a0, $s6, $0	#Load file descriptor
-	la $a1,bom		#We'll save the bytes in the char space
+	la $a1,bom		#We'll save the bytes in the bom space
 	li $a2,3		#We'll only accept 3 bytes in order to verify a BOM for a UTF-8 encoding.
 	syscall
 	bltz $v0,byteReadError	#If $v0 is negative, reading the byte failed.
 	
 	la $s2,bom		#Save the address to $s2
-	lbu $t3,0($s2)	#load the byte from $s2 to $t3
+	lw $t3,0($s2)	#load the BOM word from $s2 to $t3
 	
 	bne $t2,$t3,notUTF	#check if the read bytes are equivalent to the required BOM. Quit if not.
 	j quit
