@@ -93,14 +93,196 @@ processFirstByte:
 	
 	j processFirstByte	#Read the next byte.
 	
-processMoreBytes
+processMoreBytes:
 
-	li $t5,00000110
-	li $t6,00001110
-	li $t7,00011110
+	li $t5,0x00000006		#Possible Byte headers for Unicode bytes.
+	li $t6,0x0000000E
+	li $t7,0x0000001E
 	srl $t4,$t3,5		#Shift the bits to leave just the first 3 bits
-	beq $t4,$t5,processTwoB	#branch and process based on how many 1's the byte header has
+	beq $t4,$t5,process2B	#branch and process based on how many 1's the byte header has
+	srl $t4,$t3,4
+	beq $t4,$t6,process3B 
+	srl $t4,$t3,3
+	beq $t4,$t7,process4B
 	
+	j byteReadError		#If we haven't matched the header bits with an expected result we quit the program with an error messsage
+	
+process2B:
+	
+	li $v0,14		#Read the second byte
+	move $a0,$s6
+	la $a1,char		#Next byte is stored at our char address.
+	li $a2,1
+	syscall
+	bltz $v0,byteReadError
+	
+	la $t5,char
+	lbu $t4,0($t5)	#Load the second byte into $t4
+	andi $t3,$t3,0x0000001F	#Clear the header bits for the first byte
+	andi $t4,$t4,0x0000003F	#Clear the header bits for the second byte
+	
+	li $v0,4		#Print the label and the hex representations for each byte.
+	la $a0,twoBytes
+	syscall
+	li $v0,34		#Print first byte in hex
+	la $a0,($t3)
+	syscall
+	li $v0,4
+	la $a0,tab
+	syscall
+	li $v0,34		#Print second byte in hex
+	la $a0,($t4)
+	syscall
+	li $v0,4
+	la $a0,tab
+	syscall
+	
+	sll $t3,$t3,6		#Shift the first byte's bits left to make room for the second's
+	or $t3,$t3,$t4		#insert the second set of bits into the first and save to $t3
+	
+	la $a0,cpHeader		#Print the Codepoint header and the hex value
+	syscall
+	li $v0,34
+	la $a0,($t3)
+	syscall
+	
+	j processFirstByte	#Return to process the next char.
+	
+process3B:
+
+	li $v0,14		#Read the second byte
+	move $a0,$s6
+	la $a1,char		#Next byte is stored at our char address.
+	li $a2,1
+	syscall
+	bltz $v0,byteReadError
+	la $t5,char
+	lbu $t4,0($t5)	#Load the second byte into $t4
+	
+	li $v0,14		#Read the third byte
+	move $a0,$s6
+	la $a1,char		#Next byte is third at our char address.
+	li $a2,1
+	syscall
+	bltz $v0,byteReadError
+	la $t5,char
+	lbu $t5,0($t5)	#Load the third byte into $t5
+	
+	andi $t3,$t3,0x0000001F	#Clear the header bits for the first byte
+	andi $t4,$t4,0x0000003F	#Clear the header bits for the second byte
+	andi $t5,$t5,0x0000003F	#Clear the header bits for the third byte
+	
+	li $v0,4		#Print the label and the hex representations for each byte.
+	la $a0,threeBytes
+	syscall
+	li $v0,34		#Print first byte in hex
+	la $a0,($t3)
+	syscall
+	li $v0,4
+	la $a0,tab
+	syscall
+	li $v0,34		#Print second byte in hex
+	la $a0,($t4)
+	syscall
+	li $v0,4
+	la $a0,tab
+	syscall
+	li $v0,34		#Print second third in hex
+	la $a0,($t5)
+	syscall
+	li $v0,4
+	la $a0,tab
+	syscall
+	
+	sll $t3,$t3,12		#Shift the first byte's bits left to make room for the second and third's
+	sll $t4,$t4,6		#Shift the second byte's bits left to make room for the third's
+	or $t3,$t3,$t4		#insert the second set of bits into the first and save to $t3
+	or $t3,$t3,$t5		#insert the third set of bits into the first and seconds and save to $t3
+	
+	la $a0,cpHeader		#Print the Codepoint header and the hex value
+	syscall
+	li $v0,34
+	la $a0,($t3)
+	syscall
+	
+	j processFirstByte	#Return to process the next char.
+	
+process4B:
+
+	li $v0,14		#Read the second byte
+	move $a0,$s6
+	la $a1,char		#Next byte is stored at our char address.
+	li $a2,1
+	syscall
+	bltz $v0,byteReadError
+	la $t5,char
+	lbu $t4,0($t5)	#Load the second byte into $t4
+	
+	li $v0,14		#Read the third byte
+	move $a0,$s6
+	la $a1,char		#Next byte is third at our char address.
+	li $a2,1
+	syscall
+	bltz $v0,byteReadError
+	la $t5,char
+	lbu $t5,0($t5)	#Load the third byte into $t5
+	
+	li $v0,14		#Read the fourth byte
+	move $a0,$s6
+	la $a1,char		#Next byte is stored at our char address.
+	li $a2,1
+	syscall
+	bltz $v0,byteReadError
+	la $t6,char
+	lbu $t6,0($t6)	#Load the fourth byte into $t6
+	
+	andi $t3,$t3,0x0000001F	#Clear the header bits for the first byte
+	andi $t4,$t4,0x0000003F	#Clear the header bits for the second byte
+	andi $t5,$t5,0x0000003F	#Clear the header bits for the third byte
+	andi $t6,$t6,0x0000003F	#Clear the header bits for the fourth byte
+	
+	li $v0,4		#Print the label and the hex representations for each byte.
+	la $a0,threeBytes
+	syscall
+	li $v0,34		#Print first byte in hex
+	la $a0,($t3)
+	syscall
+	li $v0,4
+	la $a0,tab
+	syscall
+	li $v0,34		#Print second byte in hex
+	la $a0,($t4)
+	syscall
+	li $v0,4
+	la $a0,tab
+	syscall
+	li $v0,34		#Print second third in hex
+	la $a0,($t5)
+	syscall
+	li $v0,4
+	la $a0,tab
+	syscall
+	li $v0,34		#Print second fourth in hex
+	la $a0,($t6)
+	syscall
+	li $v0,4
+	la $a0,tab
+	syscall
+	
+	sll $t3,$t3,18		#Shift the first byte's bits left to make room for the second, third and fourth's
+	sll $t4,$t4,12		#Shift the second byte's bits left to make room for the third's
+	sll $t5,$t5,6		#Shift the third byte's bits left to make room for the fouth's
+	or $t3,$t3,$t4		#insert the second set of bits into the first and save to $t3
+	or $t3,$t3,$t5		#insert the third set of bits into the first and seconds and save to $t3
+	or $t3,$t3,$t6		#insert the fourth set of bits into the first, second's and thirds and save to $t3
+	
+	la $a0,cpHeader		#Print the Codepoint header and the hex value
+	syscall
+	li $v0,34
+	la $a0,($t3)
+	syscall
+	
+	j processFirstByte	#Return to process the next char.
 	
 byteReadError:
 
@@ -134,8 +316,8 @@ quit:
 	threeBytes: .asciiz "\n3 bytes:\t"
 	tab: .asciiz "\t"
 	cpHeader: .asciiz "U+"
-	notUTFBOM: .asciiz "The entered file does not have a UTF-8 Byte Order Marking"
-	byteError: .asciiz "There was an error reading in the next byte(s)"
+	notUTFBOM: .asciiz "\nThe entered file does not have a UTF-8 Byte Order Marking"
+	byteError: .asciiz "\nThere was an error reading in the next byte(s)"
 	finishStr: .asciiz "\nFinshed reading the file. Quitting..."
 	.align 2
 	file: .space 64
