@@ -312,13 +312,13 @@ quit:
 .data
 	prompt: .asciiz "Enter the name/directory of the file encoded in UTF-8: \n"
 	oneByte: .asciiz "\n1 byte:\t"
-	twoBytes: .asciiz "\n2 bytes:\t"
-	threeBytes: .asciiz "\n3 bytes:\t"
+	twoBytes: .asciiz "\n2 bytes:"
+	threeBytes: .asciiz "\n3 bytes:"
 	tab: .asciiz "\t"
 	cpHeader: .asciiz "U+"
 	notUTFBOM: .asciiz "\nThe entered file does not have a UTF-8 Byte Order Marking"
 	byteError: .asciiz "\nThere was an error reading in the next byte(s)"
-	finishStr: .asciiz "\nFinshed reading the file. Quitting..."
+	finishStr: .asciiz "\nFinshed reading the file."
 	.align 2
 	file: .space 64
 	.align 2
