@@ -3,6 +3,7 @@
 # This file is NOT part of your homework 3 submission.
 
 .data
+pi: .float 3.1415926535897924
 prompt_float: .asciiz "\nPlease enter a number: "
 another: .asciiz "\nAnother (Y/N)? "
 productmsg: .asciiz "\nThe product of the sequence is: "
@@ -26,12 +27,12 @@ incorrect: .asciiz "\nBad input. Try again"
 
 _start:
 	# Ask the user for a list of values
-	li $t0, 0
+	li $s1, 0
 
 product_input_loop:
 
 	# increment the counter
-	addi $t0, $t0, 1
+	addi $s1, $s1, 1
 
 	# Ask the user for a float value
 	# print the prompt
@@ -80,10 +81,10 @@ product_input_again:
 
 product_input_done:
 	# save the value to adjust stack pointer by
-	sll $s0, $t0, 4
+	sll $s0, $s1, 4
 
 	# Move the amount of items from the stack into it
-	move $a0, $t0
+	move $a0, $s1
 	jal product
 
 	# adjust stack pointer back to the correct position

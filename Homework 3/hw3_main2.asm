@@ -50,7 +50,6 @@ _start:
 	syscall
 
 	#arcLengthS to be defined in your hw2.asm
-	la $v0, input
 	mov.s $f12, $f20
 	jal arcLengthS
 
