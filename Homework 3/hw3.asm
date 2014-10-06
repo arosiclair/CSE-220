@@ -13,7 +13,9 @@
 	exponentLabel: .asciiz "\nExponent:\t"
 	fractionLabel: .asciiz "\nFraction:\t"
 	binaryLabel: .asciiz "\nBinary Product:\t"
+	.align 2
 	exp: .space 1
+	.align 2
 	frac: .space 3
 	
 .text
@@ -32,14 +34,13 @@ toRadians:
 #Finds the arclength of a given angle in degrees and float distance
 arcLength:
 
-	move $fp,$sp
 	addi $sp,$sp,-4	#Shift the stack pointer down a word to fit $ra
-	sw $ra,($fp)	#Store the original $ra because we will be calling another function    
+	sw $ra,($sp)	#Store the original $ra because we will be calling another function    
 	jal toRadians	#Convert the degrees in $f12 to radians in $f0
 	
 	mul.s $f0,$f0,$f13	#Multiply the radian result from the "toRadians" call by the second argument.
 	
-	lw $ra,($fp)	#Restore the return address we saved.
+	lw $ra,($sp)	#Restore the return address we saved.
 	addi $sp,$sp,4	#Reset the position of the stack pointer.	
 	jr $ra			#Return to calling function
 
@@ -47,12 +48,11 @@ arcLength:
 atof:
 	
 	#STACK HEADER
-	move $fp,$sp	#Set the frame pointer
 	addi $sp,$sp,-16	
-	sw $ra,($fp)	#Save the return address for later
-	sw $s0,4($fp)	#Save $s0 as we will be using it as a counter.
-	sw $s1,8($fp)
-	sw $s2,12($fp)	
+	sw $ra,($sp)	#Save the return address for later
+	sw $s0,4($sp)	#Save $s0 as we will be using it as a counter.
+	sw $s1,8($sp)
+	sw $s2,12($sp)	
 		
 	move $s0,$a0	#We'll save the address of the input over to $s0
 	li $s1,0		#We'll use $s1 as a counter
@@ -69,11 +69,11 @@ atof:
 	jal fraction	#Continue to process the fraction bits.
 	
 	#RESTORE FROM STACK HEADER
-	lw $ra,($fp)	#Restore our saved registers.
-	lw $s0,4($fp)
-	lw $s1,8($fp)
-	lw $s2,12($fp)
-	move $sp,$fp	#Restore position of stack pointer
+	lw $ra,($sp)	#Restore our saved registers.
+	lw $s0,4($sp)
+	lw $s1,8($sp)
+	lw $s2,12($sp)
+	addi $sp,$sp,16	#Restore position of stack pointer
 	jr $ra	#After we finish, Jump back to the caller
 	
 negative:
@@ -86,11 +86,12 @@ negative:
 	jal fraction	#Continue to process the fraction bits.
 	
 	#RESTORE FROM STACK HEADER
-	lw $ra,($fp)	#Restore our saved registers.
-	lw $s0,4($fp)
-	lw $s1,8($fp)
-	lw $s2,12($fp)
-	move $sp,$fp	#Restore position of stack pointer	
+	#move $sp,$fp	#Restore position of stack pointer
+	lw $ra,($sp)	#Restore our saved registers.
+	lw $s0,4($sp)
+	lw $s1,8($sp)
+	lw $s2,12($sp)
+	addi $sp,$sp,16	#Restore position of stack pointer	
 	jr $ra	#After we finish, Jump back to the caller
 	
 
@@ -153,10 +154,9 @@ finish:
 print_parts:
 
 	#STACK HEADER
-	move $fp,$sp
-	addi $sp,$sp,8
-	sw	$ra,($fp)
-	sw	$s0,4($fp)
+	addi $sp,$sp,-8
+	sw	$ra,($sp)
+	sw	$s0,4($sp)
 	
 	mfc1 $t0,$f12	#Copy the float to $t0
 	#Check sign-bit
@@ -170,7 +170,7 @@ print_parts:
 	la $a0,posSign
 	syscall
 	
-	jal printExp
+	j printExp
 
 neg:
 
@@ -187,13 +187,17 @@ printExp:
 
 	andi $t1,$t0,0x7F800000	#Set $t1 to the 8 exponent bits.
 	srl $t1,$t1,23		#Shift the exponent bits to the end.
-	sb $t1,exp		#Store the exp bits in a string label.
+	#sb $t1,exp		#Store the exp bits in a string label.
+	
+	li $s0,0		#Use $s0 as an index
+	#jal printChars
 	
 	#Print the exponent 
 	li $v0,4
 	la $a0,exponentLabel
 	syscall
-	la $a0,exp
+	li $v0,35
+	la $a0,($t1)
 	syscall
 	li $v0,11
 	li $a0,'\t'
@@ -203,7 +207,7 @@ printExp:
 	syscall
 
 	j printFrac	#Continue to print the fraction bits
-
+	
 printFrac:
 
 	andi $t1,$t0,0x007FFFFF	#Set $t1 to the lower 23 bits
@@ -213,7 +217,8 @@ printFrac:
 	li $v0,4
 	la $a0,fractionLabel
 	syscall
-	la $a0,frac
+	li $v0,35
+	la $a0,($t1)
 	syscall
 	li $v0,11
 	li $a0,'\t'
@@ -223,8 +228,9 @@ printFrac:
 	syscall
 	
 	#RESTORE FROM STACK HEADER
-	lw $ra,($fp)
-	lw $s0,4($fp)
+	lw $ra,($sp)
+	lw $s0,4($sp)
+	addi $sp,$sp,8	#Restore the Stack Pointer position
 	jr $ra	#Return to caller
 	
 print_binary_product:
@@ -233,6 +239,16 @@ print_binary_product:
 		la $a0,binaryLabel
 		syscall
 		
+		jr $ra
+		
 arcLengthS:
 
-			
+	#STACK HEADER
+	addi $sp,$sp,-8
+	sw $ra,($sp)
+	sw $f0,4($sp)
+	
+	move $a0,$v0	#Move the input address to $a0
+	jal atof		#atof will convert the input at $a0 to a float at $f0
+	
+	jr $ra
