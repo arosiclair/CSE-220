@@ -81,7 +81,7 @@ product_input_again:
 
 product_input_done:
 	# save the value to adjust stack pointer by
-	sll $s0, $s1, 4
+	sll $s0, $s1, 2
 
 	# Move the amount of items from the stack into it
 	move $a0, $s1

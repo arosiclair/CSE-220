@@ -108,24 +108,27 @@ negative:
 exponent:
 	
 	add $t5,$s0,$s1	#t5 has address of the next char
-	sll $t1,$t1,4	#Make room for the next digit
 	lb $t2,($t5)	#Load the next char into $t2
 	li $t3,'\n'
 	beq $t2,$t3,noDecimal	#Convert the digits to float representation than finish.
+	li $t3,'.'
+	beq $t2,$t3,expBits		#If we loaded a period, continue to get the exponent bits.
 	li $t3,'0'		#Load $t3 with ASCII '0' for conversion
 	sub $t4,$t2,$t3	#Set $t4 to a converted digit.
-	abs $t4,$t4		#In case we just tried converting a period.
-	or $t1,$t1,$t4	#Insert the $t4 digit into $t1
-	addi $s1,$s1,1	#Increment counter
-	li $t3,'.'
-	bne $t2,$t3,exponent	#repeat if the char we just inserted wasn't a period
+	li $t7,10
+	mul $t1,$t1,$t7	#Shift the previous digits over by a power of 10.
+	add $t1,$t1,$t4	#Add in our next digit
+	addi $s1,$s1,1	#Increment index
+	j exponent
 	
-	
-	srl $t1,$t1,4	#The char we just inserted was a decimal so we'll shift it out
+
+expBits:
+
+	addi $s1,$s1,1	#Increment index past the decimal
 	mtc1 $t1,$f4	#Move the integer digits we have to a float
 	cvt.s.w $f4,$f4	#Convert the integer to a single-prec float
 	mfc1 $t1,$f4	#Move the float bits back
-	andi $t1,$t1,0x7F800000	#Take the exponent bits
+	#andi $t1,$t1,0x7F800000	#Take the exponent bits
 	or $t0,$t0,$t1	#Insert our exponent bits with the sign bit we have in $t0
 	mtc1 $t0,$f0	#Move our sign bit and exponent bits into our result register.
 	
