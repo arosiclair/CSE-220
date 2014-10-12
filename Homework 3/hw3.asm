@@ -8,16 +8,15 @@
 	floatOne: .float 1	#Used for negative sign bit
 	floatSign: .float -0	#Used for negative sign bit
 	pointOne: .float 0.1	#Used for dividing by 10
+	phantomOne: .asciiz "1."
+	baseTwo:	.asciiz " x 2^+"
+	baseTwoNeg: .asciiz " x 2^"
 	signLabel:	.asciiz "Sign:\t"
 	posSign: .asciiz "0 +"
 	negSign: .asciiz "1 -"
 	exponentLabel: .asciiz "\nExponent:\t"
 	fractionLabel: .asciiz "\nFraction:\t"
 	binaryLabel: .asciiz "\nBinary Product:\t"
-	.align 2
-	exp: .space 1
-	.align 2
-	frac: .space 3
 	
 .text
 #Converts a given angle argument from degrees to radians.
@@ -65,16 +64,23 @@ atof:
 		
 	move $s0,$a0	#We'll save the address of the input over to $s0
 	li $s1,0		#We'll use $s1 as a counter
-					#removeNull
 	
 	#Get the sign bit.	
 	lb $t0,0($s0)	#Check the sign-bit
 	li $t2,'-'
 	beq $t0,$t2,negative	#Add a sign-bit 1 if the first char is "-"
 	li $s1,0		#We're going to use $s1 as a index starting at 0
+	
+	mtc1 $0,$f0		#Make sure $f0 is empty first
+	mtc1 $0,$f4		#Make sure $f4 is empty 
 	li $t0,0		#Make sure $t0 is empty
+	li $t1,0		#Make sure $t1 is empty
 	jal exponent	#Contine to process the exponent bits.
+	
 	li $s2,0		#Another counter is needed.
+	mtc1 $0,$f4		#Make sure $f4 is empty first
+	li $t0,0		#Make sure $t0 is empty
+	li $t1,0		#Make sure $t1 is empty
 	jal fraction	#Continue to process the fraction bits.
 	
 	#RESTORE FROM STACK HEADER
@@ -89,8 +95,13 @@ negative:
 	
 	li $t0,0x80000000	#Insert the sign bit
 	li $s1,1		#We're going to use $s1 as a index starting at 1
+	mtc1 $0,$f0		#Make sure $f0 is empty first
+	li $t1,0		#Make sure $t1 is empty
 	jal exponent
+	
 	li $s2,0		#Another counter is needed.
+	li $t0,0		#Make sure $t0 is empty
+	li $t1,0		#Make sure $t1 is empty
 	jal fraction	#Continue to process the fraction bits.
 	
 	#RESTORE FROM STACK HEADER
@@ -108,17 +119,28 @@ negative:
 exponent:
 	
 	add $t5,$s0,$s1	#t5 has address of the next char
+	
 	lb $t2,($t5)	#Load the next char into $t2
 	li $t3,'\n'
 	beq $t2,$t3,noDecimal	#Convert the digits to float representation than finish.
 	li $t3,'.'
 	beq $t2,$t3,expBits		#If we loaded a period, continue to get the exponent bits.
+	
+	addi $s1,$s1,1	#Increment index
+	li $t3,'+'
+	beq $t2,$t3,exponent	#Skip over this char if it's a + sign.
+	
 	li $t3,'0'		#Load $t3 with ASCII '0' for conversion
 	sub $t4,$t2,$t3	#Set $t4 to a converted digit.
+	
+	#Check if the converted digit is within the valid range.
+	li $t3,9
+	bltz $t4,noDecimal		#Stop conversion if it's out of range.
+	bgt $t4,$t3,noDecimal
+	
 	li $t7,10
 	mul $t1,$t1,$t7	#Shift the previous digits over by a power of 10.
 	add $t1,$t1,$t4	#Add in our next digit
-	addi $s1,$s1,1	#Increment index
 	j exponent
 	
 
@@ -136,7 +158,6 @@ expBits:
 	
 noDecimal:
 
-	srl	$t1,$t1,4	#Reposition our integer
 	mtc1 $t1,$f4	#Move the integer digits we have to a float
 	cvt.s.w $f4,$f4	#Convert the integer to a single-prec float
 	mfc1 $t1,$f4	#Move the float bits back
@@ -156,11 +177,20 @@ fraction:
 	add $t4,$s0,$s1	#t4 has address of the next char
 	addi $s2,$s2,1	#$s2 keeps track of how many places past decimal point.
 	lb $t0,($t4)	#Load the next char after the decimal
+	
 	li $t3,'\n'
 	beq $t0,$t3,finish	#Stop once the char we load is the new line char at the end.
+	
 	addi $s1,$s1,1	#increment index
+	
 	li $t1,'0'
 	sub $t0,$t0,$t1	#Set $t0 to the integer conversion from ASCII
+	
+	#Check if the converted digit is within the valid range.
+	li $t1,9
+	bltz $t0,finish		#Stop conversion if it's out of range.
+	bgt $t0,$t1,finish
+	
 	mtc1 $t0,$f4	#Move the digit to a float register
 	cvt.s.w $f4,$f4	#Convert the digit in $f4 to a true float value		
 	li $t2,0		#Used to count how many multiplications are needed.
@@ -169,8 +199,8 @@ fraction:
 
 reposition:
 
-	l.s $f5,pointOne	#Load 0.1 into $f5
-	mul.s $f4,$f4,$f5	#move over 1 place
+	l.s $f6,pointOne	#Load 0.1 into $f6
+	mul.s $f4,$f4,$f6	#move over 1 place
 	addi $t2,$t2,1		#increment our temp counter
 	beq $t2,$s2,insert	#Stop once we've moved it over enough
 	j reposition		#Repeat until we've moved enough times.
@@ -232,7 +262,6 @@ printExp:
 
 	andi $t1,$t0,0x7F800000	#Set $t1 to the 8 exponent bits.
 	srl $t1,$t1,23		#Shift the exponent bits to the end.
-	#sb $t1,exp		#Store the exp bits in a string label.
 	
 	li $s0,0		#Use $s0 as an index
 	#jal printChars
@@ -256,7 +285,6 @@ printExp:
 printFrac:
 
 	andi $t1,$t0,0x007FFFFF	#Set $t1 to the lower 23 bits
-	sw $t1,frac
 	
 	#Print the fraction
 	li $v0,4
@@ -284,7 +312,52 @@ print_binary_product:
 		la $a0,binaryLabel
 		syscall
 		
-		li $v0,11	#Move down a line.
+		#Start with leading "1."
+		la $t0,phantomOne	
+		la $a0,($t0)
+		syscall
+		
+		#Move the float bits to $t0
+		mfc1 $t0,$f12
+		andi $t1,$t0,0x007FFFFF	#Take the mantissa bits into $t1
+		
+		li $v0,35		#Print the mantissa bits next to "1."
+		la $a0,($t1)
+		syscall
+		
+		andi $t1,$t0,0x7F800000	#Take the exponent bits into $t1 and convert to int
+		srl $t1,$t1,23
+		addi $t1,$t1,-127
+
+		bltz $t1,negBinary		#print neg base 2 if exponent is neg.
+		
+		la $t2,baseTwo	#Print the positive base 2 label
+		li $v0,4
+		la $a0,($t2)
+		syscall
+		
+		li $v0,1
+		la $a0,($t1)
+		syscall
+		
+		li $v0,11	#Skip a line
+		li $a0,'\n'
+		syscall
+		
+		jr $ra
+		
+negBinary:
+
+		la $t2,baseTwoNeg	#Print the negative base 2 label
+		li $v0,4
+		la $a0,($t2)
+		syscall
+		
+		li $v0,1
+		la $a0,($t1)
+		syscall
+		
+		li $v0,11	#Skip a line
 		li $a0,'\n'
 		syscall
 		
@@ -354,8 +427,9 @@ one:
 
 multArgs:
 
+	mtc1 $0,$f4			#Make sure $f4 is empty
 	beq $s2,$s0,done	#Stop if we processed enough args.
-	lwc1 $f4,0($fp)
+	l.s $f4,($fp)
 	add $fp,$fp,$s1		#Move the frame pointer up by a word
 	mul.s $f0,$f0,$f4	#Multiply the total in $f0 with the float we just took
 	addi $s0,$s0,1		#Increment counter
