@@ -52,17 +52,13 @@ invalidBase:
 
 printBaseIf:
 	
-	#STACK HEADER
-	addi $sp,$sp,-4
-	sw $a0,($sp)
+	move $s0,$a0	#Save $a0
 	
 	div $a0,$a1	#The number is greater than the base so divide it by the base
 	mflo $a0
 	jal printBase	#Recursively call with new quotient as number
 	
-	#RESTORE $a0
-	lw $a0,($sp)
-	addi $sp,$sp,4
+	move $a0,$s0	#Restore $a0
 	
 	j printBaseElse #After the above returns, continue to the rest of the function
 	
@@ -90,30 +86,34 @@ printBaseElse:
 #Returns:	$v0 = Integer distance
 levenshteinDistance:
 	
+	#STACK HEADER
+	addi $sp,$sp,-36
+	sw $ra,($sp)
+	sw $s0,4($sp)	#s0 is "match"
+	sw $s1,8($sp)	#s1 saves $a0
+	sw $s2,12($sp)	#s2 saves $a1
+	sw $s3,16($sp)	#s3 saves $a2
+	sw $s4,20($sp)	#s4 saves $a3
+	sw $s5,24($sp)	#First int
+	sw $s6,28($sp)	#Second int
+	sw $s7,32($sp)	#Third int
+	
+	
+	move $s1,$a0	#Save args
+	move $s2,$a1
+	move $s3,$a2
+	move $s4,$a3
+	
 	#Base case, empty strings
 	beqz $a1,returnLenT
 	beqz $a3,returnLenS
 	
-	#STACK HEADER
-	addi $sp,$sp,-28
-	sw $ra,($sp)
-	sw $s0,4($sp)	#s0 is "match"
-	sw $s1,8($sp)	#s1 saves $a1
-	sw $s2,12($sp)	#s2 saves $a3
-	sw $s3,16($sp)	#First int
-	sw $s4,20($sp)	#Second int
-	sw $s5,24($sp)	#Third int
-	
-	move $s1,$a1	#Save length args
-	move $s2,$a3
-	
-	
 	
 	#CHECK IF LAST CHARS ARE EQUAL
-	addi $t0,$a1,-1	#Set $t0 to index of the last char for string S
+	addi $t0,$a1,-2	#Set $t0 to index of the last char for string S
 	add $t1,$t0,$a0	#Set $t1 to the last char's mem address.
 	lb $t2,($t1)
-	addi $t0,$a3,-1 #Set $t0 to index of the last char for string T
+	addi $t0,$a3,-2 #Set $t0 to index of the last char for string T
 	add $t1,$t0,$a2	#Set $t1 to the last char's mem address
 	lb $t3,($t1)
 	
@@ -131,43 +131,70 @@ notEqual:
 returnLenT:
 
 	move $v0,$a3	
-	jr $ra
+	#RESTORE REGISTERS AND $SP
+	lw $ra,($sp)
+	lw $s0,4($sp)
+	lw $s1,8($sp)
+	lw $s2,12($sp)
+	lw $s3,16($sp)
+	lw $s4,20($sp)
+	lw $s5,24($sp)
+	lw $s6,28($sp)
+	lw $s7,32($sp)
+	addi $sp,$sp,36
+	jr $ra		#Return to caller
 
 returnLenS:
 
 	move $v0,$a1
-	jr $ra
+	#RESTORE REGISTERS AND $SP
+	lw $ra,($sp)
+	lw $s0,4($sp)
+	lw $s1,8($sp)
+	lw $s2,12($sp)
+	lw $s3,16($sp)
+	lw $s4,20($sp)
+	lw $s5,24($sp)
+	lw $s6,28($sp)
+	lw $s7,32($sp)
+	addi $sp,$sp,36
+	jr $ra		#Return to caller
 
 #Recursively calls levenshteinDistance and uses the minimum function
 minCall:
 	
-	#USE LEVENSHTEIN TO GET 3 DIFFERENT INTS $s3-$s5
-	#$s3
+	#USE LEVENSHTEIN TO GET 3 DIFFERENT INTS $s5-$s7
+	#$s5
 	addi $a1,$a1,-1		#Decrement first string length as required by algorithm
 	jal levenshteinDistance
-	move $s3,$v0		#Save result into $s3
-	addi $s1,$s1,1		#Increment result as required by algorithm
+	move $s5,$v0		#Save result into $s5
+	addi $s5,$s5,1		#Increment result as required by algorithm
 	
-	#$s4
-	move $a1,$s1		#Restore length values
-	move $a3,$s2
+	#$s6
+	move $a0,$s1		#Restore args
+	move $a1,$s2
+	move $a2,$s3
+	move $a3,$s4
 	addi $a3,$a3,-1		#Decrement 2nd string length as required by algorithm
 	jal levenshteinDistance
-	move $s4,$v0		#Save result to $s4
-	addi $s2,$s2,1		#Increment result as required by algorithm
+	move $s6,$v0		#Save result to $s6
+	addi $s6,$s6,1		#Increment result as required by algorithm
 	
-	#$s5
-	move $a1,$s1		#Restore length values
-	move $a3,$s2 
+	#$s7
+	move $a0,$s1		#Restore args
+	move $a1,$s2
+	move $a2,$s3
+	move $a3,$s4
 	addi $a1,$a1,-1		#Decrement both lengths as required by the algorithm
 	addi $a3,$a3,-1
 	jal levenshteinDistance
-	move $s5,$v0		#Save result to #s5
-	add $s5,$s5,$s0		#Add the result with "match" as required by algorithm
+	move $s7,$v0		#Save result to #s5
+	add $s7,$s7,$s0		#Add the result with "match" as required by algorithm
 	
-	move $a0,$s3		#Move our ints into appropriate args
-	move $a1,$s4
-	move $a2,$s5
+	
+	move $a0,$s5		#Move our ints into appropriate args
+	move $a1,$s6
+	move $a2,$s7
 	jal minimum			#Call minmum
 	#v0 now has the return value
 	
@@ -179,7 +206,9 @@ minCall:
 	lw $s3,16($sp)
 	lw $s4,20($sp)
 	lw $s5,24($sp)
-	addi $sp,$sp,28
+	lw $s6,28($sp)
+	lw $s7,32($sp)
+	addi $sp,$sp,36
 	jr $ra		#Return to caller
 
 #Compares three int args, returns the minimum
@@ -190,7 +219,7 @@ minCall:
 minimum:
 	
 	blt $a0,$a1,compIntOne	#Compare the first integer with the third if it's lesser
-	j	compInt2			#Compare the second
+	j	compIntTwo			#Compare the second with the third
 compIntOne:
 	blt $a0,$a2,returnIntOne	#int 1 is the least
 	j returnIntThree			#int 3 is the least
@@ -218,13 +247,13 @@ strlen:
 strlenloop:
 
 	add $t0,$t1,$a0	#$t0 is the effective memory address of the counter
+	addi $t1,$t1,1		#Increment counter
 	lb $t2,($t0)
 	li $t3,'\n'
-	beq $t2,$t3,done	#Check if the byte we just loaded was the newline character
-	addi $t1,$t1,1		#Increment counter
+	beq $t2,$t3,end	#Check if the byte we just loaded was the newline character
 	j strlenloop
 
-done: 
+end: 
 
 	move $v0,$t1	#Return our counter
 	jr $ra	
