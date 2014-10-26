@@ -25,7 +25,7 @@ int promptForId(void) {
 		/* Read in the whole line */
 		fgets(line, sizeof(line), stdin);
 		/* If we were not able to parse the string, tell the user */
-		if(!(valid = sscanf(line, "%d", &id))) {brea
+		if(!(valid = sscanf(line, "%d", &id))) {
 			printf("Invalid id entered.\n");
 		}
 	} while(!valid);
