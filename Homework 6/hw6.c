@@ -92,13 +92,14 @@ void handleFlags(int argc, char *argv[]){
 
 /* Prints the Help prompt and exits failure if there were no flags given */
 void printHelp(int failure){
+	extern char helpPrompt[];
 
 	if (failure){
-		printf(helpPrompt);
+		printf("%s", helpPrompt);
 		exit(ERROR_FLAGS);
 	}
 
-	printf(helpPrompt);
+	printf("%s", helpPrompt);
 	exit(EXIT_SUCCESS);
 }
 
