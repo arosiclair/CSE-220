@@ -8,6 +8,7 @@ SBU ID: 109235970
 #include <stdlib.h>
 #include <unistd.h>	/* Used for getopt() function*/
 #include <string.h>	/* Used to compare strings */
+#include <stddef.h> /* Used for NULL macro */
 
 
 /* Error exit codes */
@@ -74,7 +75,7 @@ void handleFlags(int argc, char *argv[]){
 
 	/* h was not found so we parse each of the flags with getopt.
 	We call a function based on the returned option and use the label int to signal whether the printed stats should be labeled. */
-	while ((opt = getopt(argc, argv, validArgs)) != -1){	
+	while ((opt = getopt(argc, argv, validArgs)) != 0){	
 		switch(opt){
 			case 'i':
 				instrStats(label);
@@ -119,7 +120,7 @@ void instrStats(int label){
 	float numOfLines = 0, numItype = 0, numRtype = 0, numJtype = 0, rUsage, iUsage, jUsage; 
 
 	/* Condition reads in new instruction and checks if was successfully read */
-	while(fgets(line, 11, stdin) != 0){
+	while(fgets(line, 11, stdin) != NULL){
 		/* Validate each char in the input string */
 		for(i = 2; i < 10; i++){
 			if(line[i] >= '0' && line[i] <= '9')
@@ -129,6 +130,9 @@ void instrStats(int label){
 			if (line[i] >= 'A' && line[i] <= 'F')
 				continue;
 			/* char didn't checkout so exit with error */
+			printf("%s", line);
+			printf("%c\n", line[i]);
+			printf("%.0f\n", numOfLines);
 			exit(ERROR_INSTR);
 		}
 
@@ -200,7 +204,7 @@ void regStats(int label){
 	}
 
 	/* Loop through each instruction, analyze the registers used and update stats */
-	while(fgets(line, 11, stdin) != 0){
+	while(fgets(line, 11, stdin) != NULL){
 		/* Validate each char in the input string */
 		for(i = 2; i < 10; i++){
 			if(line[i] >= '0' && line[i] <= '9')
@@ -210,6 +214,9 @@ void regStats(int label){
 			if (line[i] >= 'A' && line[i] <= 'F')
 				continue;
 			/* char didn't checkout so exit with error */
+			printf("%s", line);
+			printf("%c\n", line[i]);
+			printf("%d\n", numOfLines);
 			exit(ERROR_REG);
 		}
 
@@ -282,7 +289,9 @@ void immStats(int label){
 	char line[10];
 
 	/* Loop through each instruction, analyze the registers used and update stats */
-	while(fgets(line, 11, stdin) != 0){
+	while(fgets(line, 11, stdin) != NULL){
+		if((feof(stdin)) != 0)
+			break;
 		/* Validate each char in the input string */
 		for(i = 2; i < 10; i++){
 			if(line[i] >= '0' && line[i] <= '9')
