@@ -58,7 +58,7 @@ void handleFlags(int argc, char *argv[]){
 
 	/* If there are no given flags, print -h with ERROR_FLAGS */
 	if (argc <= 1){
-		printHelp(1);
+		printHelp(ERROR_FLAGS);
 	}
 
 	/* Search argv elements for the letters h and u for the help menu and labels flag */
@@ -87,16 +87,21 @@ void handleFlags(int argc, char *argv[]){
 				break;
 			}
 	}
+	
+	if (label)
+		printHelp(ERROR_HUMAN);
+
+	/* Shouldn't even be able to make it this far */
 	exit(EXIT_FAILURE);
 }
 
 /* Prints the Help prompt and exits failure if there were no flags given */
-void printHelp(int failure){
+void printHelp(int failCode){
 	extern char helpPrompt[];
 
-	if (failure){
+	if (failCode){
 		printf("%s", helpPrompt);
-		exit(ERROR_FLAGS);
+		exit(failCode);
 	}
 
 	printf("%s", helpPrompt);
@@ -108,12 +113,28 @@ Args:	label = A conditional int signifying whether a header label 				should be 
 */
 void instrStats(int label){
 	/* Used to store each line that will be read from stdin */
-	int instruction = 0, opcode = 0;
+	int instruction = 0, opcode = 0, i;
+	char line[10];
 	/* Used for counting stats */
 	float numOfLines = 0, numItype = 0, numRtype = 0, numJtype = 0, rUsage, iUsage, jUsage; 
 
 	/* Condition reads in new instruction and checks if was successfully read */
-	while(scanf("%10x", &instruction) > 0){
+	while(fgets(line, 11, stdin) != 0){
+		/* Validate each char in the input string */
+		for(i = 2; i < 10; i++){
+			if(line[i] >= '0' && line[i] <= '9')
+				continue;
+			if (line[i] >= 'a' && line[i] <= 'f')
+				continue;
+			if (line[i] >= 'A' && line[i] <= 'F')
+				continue;
+			/* char didn't checkout so exit with error */
+			exit(ERROR_INSTR);
+		}
+
+		/* Scan in hex string as integer into instruction */
+		sscanf(line, "%10x", &instruction);
+
 		numOfLines++;
 
 		/* Pull first 6 bits from the instruction and shift them over */
@@ -139,9 +160,6 @@ void instrStats(int label){
 
 	/* Empty file case */
 	if (numOfLines <= 0)
-		exit(ERROR_INSTR);
-	/* Error reading case */
-	if (ferror(stdin))
 		exit(ERROR_INSTR);
 
 	/* Calcualte stats */
@@ -170,6 +188,7 @@ void regStats(int label){
 	int registers[32][4];
 	/* Used to pull info about each instruction */
 	int instruction = 0, RS = 0, RT = 0, RD = 0, opcode = 0, numOfLines = 0, i, j;
+	char line[10];
 	/* Used to calculate percent stats */
 	float totalUses = 0, percent;
 
@@ -181,7 +200,22 @@ void regStats(int label){
 	}
 
 	/* Loop through each instruction, analyze the registers used and update stats */
-	while(scanf("%10x", &instruction) > 0){
+	while(fgets(line, 11, stdin) != 0){
+		/* Validate each char in the input string */
+		for(i = 2; i < 10; i++){
+			if(line[i] >= '0' && line[i] <= '9')
+				continue;
+			if (line[i] >= 'a' && line[i] <= 'f')
+				continue;
+			if (line[i] >= 'A' && line[i] <= 'F')
+				continue;
+			/* char didn't checkout so exit with error */
+			exit(ERROR_REG);
+		}
+
+		/* Scan in hex string as integer into instruction */
+		sscanf(line, "%10x", &instruction);
+
 		numOfLines++;
 		/* Check instruction type using opcode */
 		opcode = instruction & 0xFC000000;
@@ -225,9 +259,6 @@ void regStats(int label){
 	/* Empty file case */
 	if (numOfLines <= 0)
 		exit(ERROR_REG);
-	/* Error reading case */
-	if (ferror(stdin))
-		exit(ERROR_REG);
 
 	/* Print label if required */
 	if (label)
@@ -244,6 +275,62 @@ void regStats(int label){
 }
 
 void immStats(int label){
-	printf("PRINT IMMEDIATE STATS\n");
+	/* To hold all immediate values used */
+	int immList[400];
+	/* Used to pull info about each instruction */
+	int instruction = 0, opcode = 0, immediate, numOfLines = 0, numValues = 0, i;
+	char line[10];
+
+	/* Loop through each instruction, analyze the registers used and update stats */
+	while(fgets(line, 11, stdin) != 0){
+		/* Validate each char in the input string */
+		for(i = 2; i < 10; i++){
+			if(line[i] >= '0' && line[i] <= '9')
+				continue;
+			if (line[i] >= 'a' && line[i] <= 'f')
+				continue;
+			if (line[i] >= 'A' && line[i] <= 'F')
+				continue;
+			/* char didn't checkout so exit with error */
+			exit(ERROR_IMMEDIATE);
+		}
+
+		/* Scan in hex string as integer into instruction */
+		sscanf(line, "%10x", &instruction);
+		numOfLines++;
+
+		opcode = instruction & 0xFC000000;
+		opcode >>= 26;
+
+		/* skip instruction if it's R-type */
+		if(opcode == 0)
+			continue;
+		/* Check and process if J-type */
+		else if(opcode == 2 || opcode == 3){
+			immediate = instruction & 0x03FFFFFF;
+			immList[numValues] = immediate;
+			numValues++;
+			continue;
+		/* Else it must be I-type */
+		}else{
+			immediate = instruction & 0x0000FFFF;
+			immList[numValues] = immediate;
+			numValues++;
+			continue;
+		}
+	}
+
+	/* Empty file case */
+	if (numOfLines <= 0)
+		exit(ERROR_IMMEDIATE);
+
+	if(label)
+		printf("%s\n", "IMMEDIATE-VALUE");
+
+	/* Loop through and print our list of immediates */
+	for (i = 0; i <= numValues; i++){
+		printf("%s%x\n", "0x", immList[i]);
+	}
+
 	exit(EXIT_SUCCESS);
 }
