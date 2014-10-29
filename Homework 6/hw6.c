@@ -25,7 +25,7 @@ SBU ID: 109235970
 -m Prints immediate values used
 -u Prints a label at the top of stats. Requires use of another flag.
 */
-char validArgs[] = "irmu";
+char validArgs[] = "hirmu";
 char helpPrompt[] = "Usage: ./a.out [-himru]"
 						"\n\t-h Displays this help menu."
 						"\n\t-i Displays statistics about instruction type usages."
@@ -51,10 +51,8 @@ int main(int argc, char *argv[]){
 
 /* Uses the getopt function to parse each of the given args and calls functions to handle each flag. */
 void handleFlags(int argc, char *argv[]){
-	/* Used for looping through argv */
-	int i;
 	/* Used in conjunction with getopt to process flags */
-	int opt = 0, label = 0;
+	int h = 0, i = 0, r = 0, m = 0, u = 0, opt = 0, label = 0;
 	extern char validArgs[];
 
 	/* If there are no given flags, print -h with ERROR_FLAGS */
@@ -62,35 +60,62 @@ void handleFlags(int argc, char *argv[]){
 		printHelp(ERROR_FLAGS);
 	}
 
-	/* Search argv elements for the letters h and u for the help menu and labels flag */
-	for (i = 1; i < argc; i++){
-		/* first check if the arg has a '-' */
-		if (strchr(argv[i], '-') != 0){
-			if (strchr(argv[i], 'h') != 0)
-				printHelp(0);
-			if (strchr(argv[i], 'u') != 0)
-				label = 1;
+	/* h was not found so we parse each of the flags with getopt.
+	We call a function based on the returned option and use the label int to signal whether the printed stats should be labeled. */
+	while ((opt = getopt(argc, argv, validArgs)) != -1){	
+		switch(opt){
+			case 'h':
+				h++;
+				break;
+			case 'i':
+				i++;
+				break;
+			case 'r':
+				r++;
+				break;
+			case 'm':
+				m++;
+				break;
+			case 'u':
+				u++;
+				break;
+			default:
+				exit(ERROR_FLAGS);
 		}
 	}
 
-	/* h was not found so we parse each of the flags with getopt.
-	We call a function based on the returned option and use the label int to signal whether the printed stats should be labeled. */
-	while ((opt = getopt(argc, argv, validArgs)) != 0){	
-		switch(opt){
-			case 'i':
-				instrStats(label);
-				break;
-			case 'r':
-				regStats(label);
-				break;
-			case 'm':
-				immStats(label);
-				break;
-			}
+	/* Print the help prompt if the h flag was used */
+	if (h)
+		printHelp(0);
+
+	/* Enable label if u was used with another flag, or print help prompt and exit ERROR_FLAGS */
+	if (u){
+		if (i || r || m)
+			label = 1;
+		else{
+			printHelp(ERROR_FLAGS);
+		}
 	}
-	
-	if (label)
-		printHelp(ERROR_HUMAN);
+
+
+	/* Handle the other flags */
+	if (i){
+		if(r || m)
+			printHelp(ERROR_FLAGS);
+		instrStats(label);
+	}
+
+	if (r){
+		if (i || m)
+			printHelp(ERROR_FLAGS);
+		regStats(label);
+	}
+
+	if (m){
+		if (i || r)
+			printHelp(ERROR_FLAGS);
+		immStats(label);
+	}
 
 	/* Shouldn't even be able to make it this far */
 	exit(EXIT_FAILURE);
@@ -114,13 +139,32 @@ Args:	label = A conditional int signifying whether a header label 				should be 
 */
 void instrStats(int label){
 	/* Used to store each line that will be read from stdin */
-	int instruction = 0, opcode = 0, i;
-	char line[10];
+	int instruction = 0, opcode = 0, lineLength, i;
+	char line[100];
 	/* Used for counting stats */
 	float numOfLines = 0, numItype = 0, numRtype = 0, numJtype = 0, rUsage, iUsage, jUsage; 
 
 	/* Condition reads in new instruction and checks if was successfully read */
-	while(fgets(line, 11, stdin) != NULL){
+	while(fgets(line, sizeof(line), stdin) != NULL){
+
+		/* Check if the line length is correct and if at EOF */
+		lineLength = strlen(line);
+		if (lineLength != 11){
+			if(lineLength == 10 && feof(stdin));
+			else
+				exit(ERROR_INSTR);
+		}
+
+		/* Remove the newline character at the end */
+		if (lineLength == 11)
+			line[10] = '\0';
+
+		/* validate the first two chars */
+		if (line[0] != '0')
+			exit(ERROR_INSTR);
+		if (line[1] != 'x' && line[1] != 'X')
+			exit(ERROR_INSTR);
+
 		/* Validate each char in the input string */
 		for(i = 2; i < 10; i++){
 			if(line[i] >= '0' && line[i] <= '9')
@@ -129,10 +173,8 @@ void instrStats(int label){
 				continue;
 			if (line[i] >= 'A' && line[i] <= 'F')
 				continue;
+			
 			/* char didn't checkout so exit with error */
-			printf("%s", line);
-			printf("%c\n", line[i]);
-			printf("%.0f\n", numOfLines);
 			exit(ERROR_INSTR);
 		}
 
@@ -191,8 +233,8 @@ void regStats(int label){
 						3 = times called by j instruction */
 	int registers[32][4];
 	/* Used to pull info about each instruction */
-	int instruction = 0, RS = 0, RT = 0, RD = 0, opcode = 0, numOfLines = 0, i, j;
-	char line[10];
+	int instruction = 0, RS = 0, RT = 0, RD = 0, opcode = 0, numOfLines = 0, lineLength, i, j;
+	char line[100];
 	/* Used to calculate percent stats */
 	float totalUses = 0, percent;
 
@@ -204,7 +246,25 @@ void regStats(int label){
 	}
 
 	/* Loop through each instruction, analyze the registers used and update stats */
-	while(fgets(line, 11, stdin) != NULL){
+	while(fgets(line, sizeof(line), stdin) != NULL){
+
+		lineLength = strlen(line);
+		if (lineLength != 11){
+			if(lineLength == 10 && feof(stdin));
+			else
+				exit(ERROR_REG);
+		}
+
+		/* Remove the newline character at the end */
+		if (lineLength == 11)
+			line[10] = '\0';
+
+		/* validate the first two chars */
+		if (line[0] != '0')
+			exit(ERROR_REG);
+		if (line[1] != 'x' && line[1] != 'X')
+			exit(ERROR_REG);
+
 		/* Validate each char in the input string */
 		for(i = 2; i < 10; i++){
 			if(line[i] >= '0' && line[i] <= '9')
@@ -213,10 +273,8 @@ void regStats(int label){
 				continue;
 			if (line[i] >= 'A' && line[i] <= 'F')
 				continue;
+			
 			/* char didn't checkout so exit with error */
-			printf("%s", line);
-			printf("%c\n", line[i]);
-			printf("%d\n", numOfLines);
 			exit(ERROR_REG);
 		}
 
@@ -282,16 +340,30 @@ void regStats(int label){
 }
 
 void immStats(int label){
-	/* To hold all immediate values used */
-	int immList[400];
 	/* Used to pull info about each instruction */
-	int instruction = 0, opcode = 0, immediate, numOfLines = 0, numValues = 0, i;
-	char line[10];
+	int instruction = 0, opcode = 0, immediate, numOfLines = 0, numValues = 0, lineLength, i;
+	char line[100];
 
 	/* Loop through each instruction, analyze the registers used and update stats */
-	while(fgets(line, 11, stdin) != NULL){
-		if((feof(stdin)) != 0)
-			break;
+	while(fgets(line, sizeof(line), stdin) != NULL){
+
+		lineLength = strlen(line);
+		if (lineLength != 11){
+			if(lineLength == 10 && feof(stdin));
+			else
+				exit(ERROR_IMMEDIATE);
+		}
+
+		/* Remove the newline character at the end */
+		if (lineLength == 11)
+			line[10] = '\0';
+
+		/* validate the first two chars */
+		if (line[0] != '0')
+			exit(ERROR_IMMEDIATE);
+		if (line[1] != 'x' && line[1] != 'X')
+			exit(ERROR_IMMEDIATE);
+
 		/* Validate each char in the input string */
 		for(i = 2; i < 10; i++){
 			if(line[i] >= '0' && line[i] <= '9')
@@ -300,6 +372,7 @@ void immStats(int label){
 				continue;
 			if (line[i] >= 'A' && line[i] <= 'F')
 				continue;
+			
 			/* char didn't checkout so exit with error */
 			exit(ERROR_IMMEDIATE);
 		}
@@ -316,14 +389,20 @@ void immStats(int label){
 			continue;
 		/* Check and process if J-type */
 		else if(opcode == 2 || opcode == 3){
+			if(label && numValues == 0)
+				printf("%s\n", "IMMEDIATE-VALUE");
+
 			immediate = instruction & 0x03FFFFFF;
-			immList[numValues] = immediate;
+			printf("%s%x\n", "0x", immediate);
 			numValues++;
 			continue;
 		/* Else it must be I-type */
 		}else{
+			if(label && numValues == 0)
+				printf("%s\n", "IMMEDIATE-VALUE");
+
 			immediate = instruction & 0x0000FFFF;
-			immList[numValues] = immediate;
+			printf("%s%x\n", "0x", immediate);
 			numValues++;
 			continue;
 		}
@@ -332,14 +411,6 @@ void immStats(int label){
 	/* Empty file case */
 	if (numOfLines <= 0)
 		exit(ERROR_IMMEDIATE);
-
-	if(label)
-		printf("%s\n", "IMMEDIATE-VALUE");
-
-	/* Loop through and print our list of immediates */
-	for (i = 0; i <= numValues; i++){
-		printf("%s%x\n", "0x", immList[i]);
-	}
 
 	exit(EXIT_SUCCESS);
 }
