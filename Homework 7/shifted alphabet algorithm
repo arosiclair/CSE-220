@@ -1,0 +1,13 @@
+/* Fill and configure our alphabet */
+	c = 'A';
+	for (i = 0; i < ALPHABET_SIZE; i++){
+		*(alphaPtr + i) = c + i;
+	}
+
+	/* insert the first n characters at the end of the array */
+	for(i = 0; i < n; i++)
+		*(alphaPtr + ALPHABET_SIZE - n + i) = *(alphaPtr + i);
+
+	/* decrement the remaining characters by n */
+	for(i = n; i < ALPHABET_SIZE; i++)
+		*(alphaPtr + n + i) -= n;
