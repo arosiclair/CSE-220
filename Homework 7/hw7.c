@@ -185,20 +185,20 @@ void substitution(int e, int d, int n, char *input, char *output){
 	out = openOutput(output);
 
 	/* Print out prompts for grading */
-	cse220("shift amount: %d\n", n);
+	cse220("CSE220: initial shift amount: %d\n", n);
 	if (in == stdin)
-		cse220("input file: STD_IN\n");
+		cse220("CSE220: input file: STD_IN\n");
 	else
-		cse220("input file: %s\n", input);
+		cse220("CSE220: input file: %s\n", input);
 	if (out == stdout)
-		cse220("output file: STD_OUT\n");
+		cse220("CSE220: output file: STD_OUT\n");
 	else
-		cse220("output file: %s\n", output);
-	cse220("%s", "cipher type: substition cypher\n");
+		cse220("CSE220: output file: %s\n", output);
+	cse220("%s", "CSE220: cipher type: substition cypher\n");
 	if (e)
-		cse220("cipher operation: encryption\n");
+		cse220("CSE220: cipher operation: encryption\n");
 	else
-		cse220("cipher operation: decryption\n");
+		cse220("CSE220: cipher operation: decryption\n");
 
 	/* Call encryption or decryption functions based on the choice */
 	if(e)
@@ -214,33 +214,39 @@ void subEncrypt(FILE *in, FILE *out, int n){
 
 	int i = 0, rollover;
 
-	/* Load our plaintext array with the input */
-	fgets(plainPtr, BUFFER_SIZE, in);
+	/* repeat until we reach end of input */
+	while(!(feof(in))){
+		/* Load our plaintext array with the input */
+		if (fgets(plainPtr, BUFFER_SIZE, in) == NULL)
+			break;
 
-	/* Remove any possible new line chars*/
-	removeNewline();
-	/* Convert all characters to uppercase */
-	toUppercase(plainPtr);
+		/* Remove any possible new line chars*/
+		removeNewline();
+		/* Convert all characters to uppercase */
+		toUppercase(plainPtr);
 
-	/* Fill the ciphertext array with converted chars */
-	for(i = 0; i < strlen(plaintext); i++){
-		c = *(plainPtr + i);
-		/* Only convert the character if it's within range */
-		if (c >= 'A' && c <= ('A' + ALPHABET_SIZE - 1)){
-			c += n;
-			/* if c is out of range, rollover to the beginning of the alphabet */
-			if (c > 'A' + ALPHABET_SIZE - 1){
-				rollover = c % ('A' + ALPHABET_SIZE);
-				c = 'A' + rollover;
-			}
-			/* Insert the converted char into the cipher array */
-			*(cipherPtr + i) = c;
-		}else
-			*(cipherPtr + i) = c;
+		/* Fill the ciphertext array with converted chars */
+		for(i = 0; i < strlen(plaintext); i++){
+			c = *(plainPtr + i);
+			/* Only convert the character if it's within range */
+			if (c >= 'A' && c <= ('A' + ALPHABET_SIZE - 1)){
+				c += n;
+				/* if c is out of range, rollover to the beginning of the alphabet */
+				if (c > 'A' + ALPHABET_SIZE - 1){
+					rollover = c % ('A' + ALPHABET_SIZE);
+					c = 'A' + rollover;
+				}
+				/* Insert the converted char into the cipher array */
+				*(cipherPtr + i) = c;
+			}else
+				*(cipherPtr + i) = c;
+		}
+
+		/* To stop fputs */
+		*(cipherPtr + i + 1) = '\0';
+		/* Write the converted string to the output stream */
+		fputs(cipherPtr, out);
 	}
-
-	/* Write the converted string to the output stream */
-	fputs(cipherPtr, out);
 
 	exit(EXIT_SUCCESS);
 	
@@ -253,33 +259,38 @@ void subDecrypt(FILE *in, FILE *out, int n){
 
 	int i = 0, rollover;
 
-	/* Load our cipher array with the input */
-	fgets(cipherPtr, BUFFER_SIZE, in);
+	while(!(feof(in))){
+		/* Load our cipher array with the input */
+		if (fgets(cipherPtr, BUFFER_SIZE, in) == NULL)
+			break;
 
-	/* Remove any possible new line chars*/
-	removeNewline();
-	/* Convert all characters to uppercase */
-	toUppercase(cipherPtr);
+		/* Remove any possible new line chars*/
+		removeNewline();
+		/* Convert all characters to uppercase */
+		toUppercase(cipherPtr);
 
-	/* Fill the plaintext array with decrypted chars */
-	for(i = 0; i < strlen(ciphertext); i++){
-		c = *(cipherPtr + i);
-		/* Only convert the character if it's within range */
-		if (c >= 'A' && c <= ('A' + ALPHABET_SIZE - 1)){
-			c -= n;
-			/* if c is out of range, rollover to the beginning of the alphabet */
-			if (c < 'A'){
-				rollover = 'A' % c;
-				c = 'A' + ALPHABET_SIZE - rollover;
-			}
-			/* Insert the decrypted char into the plaintext array */
-			*(plainPtr + i) = c;
-		}else
-			*(plainPtr + i) = c;
+		/* Fill the plaintext array with decrypted chars */
+		for(i = 0; i < strlen(ciphertext); i++){
+			c = *(cipherPtr + i);
+			/* Only convert the character if it's within range */
+			if (c >= 'A' && c <= ('A' + ALPHABET_SIZE - 1)){
+				c -= n;
+				/* if c is out of range, rollover to the beginning of the alphabet */
+				if (c < 'A'){
+					rollover = 'A' % c;
+					c = 'A' + ALPHABET_SIZE - rollover;
+				}
+				/* Insert the decrypted char into the plaintext array */
+				*(plainPtr + i) = c;
+			}else
+				*(plainPtr + i) = c;
+		}
+
+		/* to stop fputs */
+		*(plainPtr + i + 1) = '\0';
+		/* Write the decrypted string to the output stream */
+		fputs(plainPtr, out);
 	}
-
-	/* Write the decrypted string to the output stream */
-	fputs(plainPtr, out);
 
 	exit(EXIT_SUCCESS);
 }
@@ -294,20 +305,20 @@ void autoKey(int encrypt, int decrypt, int n, char *input, char *output, char *k
 	keyStream = openInput(key);
 
 	/* Print out prompts for grading */
-	cse220("shift amount: %d\n", n);
+	cse220("CSE220: shift amount: %d\n", n);
 	if (in == stdin)
-		cse220("input file: STD_IN\n");
+		cse220("CSE220: input file: STD_IN\n");
 	else
-		cse220("input file: %s\n", input);
+		cse220("CSE220: input file: %s\n", input);
 	if (out == stdout)
-		cse220("output file: STD_OUT\n");
+		cse220("CSE220: output file: STD_OUT\n");
 	else
-		cse220("output file: %s\n", output);
-	cse220("%s", "cipher type: Autokey cypher\n");
+		cse220("CSE220: output file: %s\n", output);
+	cse220("%s", "CSE220: cipher type: Autokey cypher\n");
 	if (encrypt)
-		cse220("cipher operation: encryption\n");
+		cse220("CSE220: cipher operation: encryption\n");
 	else
-		cse220("cipher operation: decryption\n");
+		cse220("CSE220: cipher operation: decryption\n");
 
 	/* Create the tabula recta */
 	createTabula(n);
@@ -327,49 +338,58 @@ void autoEncrypt(FILE *in, FILE *out, FILE *keyStream){
 	extern char plaintext[], ciphertext[], key[], tabula[ALPHABET_SIZE][ALPHABET_SIZE];
 	char *plainPtr = plaintext, *cipherPtr = ciphertext, *keyPtr = key, (*tabulaPtr)[ALPHABET_SIZE] = tabula, c;
 
-	int row, col, plainIndex = 0, keyIndex = 0;
+	int row, col, plainIndex = 0, keyIndex = 0, i = 0;
 
-	/* Load input arrays */
-	if (in == stdin)
-		printf("Enter the text to be encrypted:\n");
-	fgets(plainPtr, BUFFER_SIZE, in);
-	if (keyStream == stdin)
-		printf("Enter the key to use for encryption");
-	fgets(keyPtr, BUFFER_SIZE, keyStream);
+	while(!(feof(in))){
+		/* Load input arrays */
+		if(fgets(plainPtr, BUFFER_SIZE, in) == NULL)
+			break;
+		fgets(keyPtr, BUFFER_SIZE, keyStream);
 
-	/* Remove any new line chars */
-	removeNewline();
+		/* Remove any new line chars */
+		removeNewline();
 
-	/* Ensure chars are uppercase */
-	toUppercase(plainPtr);
-	toUppercase(keyPtr);
+		/* Ensure chars are uppercase */
+		toUppercase(plainPtr);
+		toUppercase(keyPtr);
 
-	/* Pad our key if necessary */
-	padKey(plainPtr);
+		/* Pad our key if necessary */
+		padKey(plainPtr);
 
-	/* Fill the ciphertext array with encrypted chars */
-	while((c = *(plainPtr + plainIndex)) != '\0'){
-		/* Only convert the character if it's within range */
-		if (c >= 'A' && c <= ('A' + ALPHABET_SIZE - 1)){
-			col = c - 'A';
+		/* Fill the ciphertext array with encrypted chars */
+		while((c = *(plainPtr + plainIndex)) != '\0'){
+			/* Only convert the character if it's within range */
+			if (c >= 'A' && c <= ('A' + ALPHABET_SIZE - 1)){
+				/* Search for the plaintext char in the first row */
+				i = 0;
+				while(*(*(tabulaPtr) + i) != c)
+					i++;
+				col = i;
 
-			/* skip invalid chars in key*/
-			while(*(keyPtr + keyIndex) < 'A' || *(keyPtr + keyIndex) > 'A' + ALPHABET_SIZE - 1)
+				/* skip invalid chars in key*/
+				while(*(keyPtr + (keyIndex % BUFFER_SIZE)) < 'A' || *(keyPtr + (keyIndex % BUFFER_SIZE)) > 'A' + ALPHABET_SIZE - 1)
+					keyIndex++;
+				
+				/* Search for the key char in the first column */
+				i = 0;
+				while(*(*(tabulaPtr + i)) != *(keyPtr + (keyIndex % BUFFER_SIZE)))
+					i++;
+				row = i;
 				keyIndex++;
-			row = *(keyPtr + keyIndex) - 'A';
-			keyIndex++;
-			
-			*(cipherPtr + plainIndex) = *(*(tabulaPtr + row) + col);
-		}else
-			*(cipherPtr + plainIndex) = c;
-		plainIndex++;
-	}
+				
+				/* Insert the char at the row and col of tabula */
+				*(cipherPtr + plainIndex) = *(*(tabulaPtr + row) + col);
+			}else
+				*(cipherPtr + plainIndex) = c;
+			plainIndex++;
+		}
 
-	debug("%s\n", plainPtr);
-	debug("%s\n", keyPtr);
-	debug("%s\n", cipherPtr);
-	/* Write the converted string to the output stream */
-	fputs(cipherPtr, out);
+		debug("%s\n", plainPtr);
+		debug("%s\n", keyPtr);
+		debug("%s\n", cipherPtr);
+		/* Write the converted string to the output stream */
+		fputs(cipherPtr, out);
+	}
 
 	exit(EXIT_SUCCESS);
 }
@@ -380,46 +400,53 @@ void autoDecrypt(FILE *in, FILE *out, FILE *keyStream){
 	char *plainPtr = plaintext, *cipherPtr = ciphertext, *keyPtr = key, (*tabulaPtr)[ALPHABET_SIZE] = tabula, c;
 	int cipherIndex = 0, keyIndex = 0, row, i = 0;
 
-	/* Load input arrays */
-	fgets(cipherPtr, BUFFER_SIZE, in);
-	fgets(keyPtr, BUFFER_SIZE, keyStream);
+	while(!(feof(in))){
+		/* Load input arrays */
+		if(fgets(cipherPtr, BUFFER_SIZE, in) == NULL)
+			break;
+		fgets(keyPtr, BUFFER_SIZE, keyStream);
 
-	/* Remove any new line chars */
-	removeNewline();
+		/* Remove any new line chars */
+		removeNewline();
 
-	/* Ensure chars are uppercase */
-	toUppercase(cipherPtr);
-	toUppercase(keyPtr);
+		/* Ensure chars are uppercase */
+		toUppercase(cipherPtr);
+		toUppercase(keyPtr);
 
-	/* Fill the plaintext array with decrypted chars */
-	while((c = *(cipherPtr + cipherIndex)) != '\0'){
-		/* Only decrypt char if it's in range */
-		if(c >= 'A' && c <= 'A' + ALPHABET_SIZE - 1){
-			/*Check if we need to pad the key */
-			if(keyIndex >= strlen(key)){
-				padKey(cipherPtr);
-			}
-			/* skip invalid chars in key*/
-			while(*(keyPtr + keyIndex) < 'A' || *(keyPtr + keyIndex) > 'A' + ALPHABET_SIZE - 1)
+		/* Fill the plaintext array with decrypted chars */
+		while((c = *(cipherPtr + cipherIndex)) != '\0'){
+			/* Only decrypt char if it's in range */
+			if(c >= 'A' && c <= 'A' + ALPHABET_SIZE - 1){
+				/*Check if we need to pad the key */
+				if(keyIndex >= strlen(key)){
+					padKey(cipherPtr);
+				}
+				/* skip invalid chars in key*/
+				while(*(keyPtr + (keyIndex % BUFFER_SIZE)) < 'A' || *(keyPtr + (keyIndex % BUFFER_SIZE)) > 'A' + ALPHABET_SIZE - 1)
+					keyIndex++;
+				/* Search for the key char in the first column */
+				i = 0;
+				while(*(*(tabulaPtr + i)) != *(keyPtr + (keyIndex % BUFFER_SIZE)))
+					i++;
 				keyIndex++;
-			row = *(keyPtr + keyIndex) - 'A';
-			keyIndex++;
+				row = i;
 
-			/* Search the row for the ciphertext char */
-			i = 0;
-			while(*(*(tabulaPtr + row) + i) != c)
-				i++;
+				/* Search the row for the ciphertext char */
+				i = 0;
+				while(*(*(tabulaPtr + row) + i) != c)
+					i++;
 
-			/* i has the index of the col of the decrypted char */
-			*(plainPtr + cipherIndex) = 'A' + i;
-		}else
-			*(plainPtr + cipherIndex) = c;
+				/* i has the index of the col of the decrypted char */
+				*(plainPtr + cipherIndex) = *(*(tabulaPtr) + i);
+			}else
+				*(plainPtr + cipherIndex) = c;
 
-		cipherIndex++;
+			cipherIndex++;
+		}
+
+		/* Print the resultant plaintext string to the desired output */
+		fputs(plainPtr, out);
 	}
-
-	/* Print the resultant plaintext string to the desired output */
-	fputs(plainPtr, out);
 	exit(EXIT_SUCCESS);
 }
 
@@ -458,7 +485,7 @@ void printTabula(){
 	char (*tabulaPtr)[ALPHABET_SIZE] = tabula, c;
 	int i, j;
 
-	printf("\nTABULA RECTA MATRIX");
+	printf("CSE220: Tabula Recta\n");
 	for (i = 0; i < ALPHABET_SIZE; i++){
 		printf("\n");
 		for(j = 0; j < ALPHABET_SIZE; j++){
@@ -508,11 +535,11 @@ void removeNewline(){
 	char *plainPtr = plaintext, *cipherPtr = ciphertext, *keyPtr = key;
 
 	/*remove newline chars if they are present */
-	if (*(plainPtr + strlen(plaintext) - 1) == '\n')
+	while(*(plainPtr + strlen(plaintext) - 1) == '\n')
 		*(plainPtr + strlen(plaintext) - 1) = '\0';
-	if (*(keyPtr + strlen(key) - 1) == '\n')
+	while(*(keyPtr + strlen(key) - 1) == '\n')
 		*(keyPtr + strlen(key) - 1) = '\0';
-	if (*(cipherPtr + strlen(ciphertext) - 1) == '\n')
+	while(*(cipherPtr + strlen(ciphertext) - 1) == '\n')
 		*(cipherPtr + strlen(ciphertext) - 1) = '\0';
 }
 
@@ -562,7 +589,7 @@ void padKey(char *reference){
 		while(*(plainPtr + i) < 'A' || *(plainPtr + i) > 'A' + ALPHABET_SIZE - 1)
 			i++;
 		/* pad a plaintext char at the end */
-		*(keyPtr + end + j) = *(plainPtr + i);
+		*(keyPtr + ((end + j) % BUFFER_SIZE))  = *(plainPtr + i);
 		keyLength++;
 		i++;
 		j++;
