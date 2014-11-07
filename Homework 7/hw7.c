@@ -43,6 +43,7 @@ FILE* openOutput(char *out);
 void removeNewline();
 void toUppercase(char *stringPtr);
 int validCharLength(char *stringPtr);
+void padKey(char *reference);
 
 
 int main (int argc, char *argv[]){
@@ -326,11 +327,14 @@ void autoEncrypt(FILE *in, FILE *out, FILE *keyStream){
 	extern char plaintext[], ciphertext[], key[], tabula[ALPHABET_SIZE][ALPHABET_SIZE];
 	char *plainPtr = plaintext, *cipherPtr = ciphertext, *keyPtr = key, (*tabulaPtr)[ALPHABET_SIZE] = tabula, c;
 
-	int i = 0, j = 0, len, row, col, plainIndex = 0, keyIndex = 0;
-	int plainLength = 0, keyLength = 0;
+	int row, col, plainIndex = 0, keyIndex = 0;
 
 	/* Load input arrays */
+	if (in == stdin)
+		printf("Enter the text to be encrypted:\n");
 	fgets(plainPtr, BUFFER_SIZE, in);
+	if (keyStream == stdin)
+		printf("Enter the key to use for encryption");
 	fgets(keyPtr, BUFFER_SIZE, keyStream);
 
 	/* Remove any new line chars */
@@ -340,23 +344,8 @@ void autoEncrypt(FILE *in, FILE *out, FILE *keyStream){
 	toUppercase(plainPtr);
 	toUppercase(keyPtr);
 
-	/* Find valid char lengths for each string*/
-	plainLength = validCharLength(plainPtr);
-	keyLength = validCharLength(keyPtr);
-
 	/* Pad our key if necessary */
-	i = 0;
-	len = strlen(key);
-	while(keyLength < plainLength){
-		/* Only pad valid chars */
-		while(*(plainPtr + i) < 'A' || *(plainPtr + i) > 'A' + ALPHABET_SIZE - 1)
-			i++;
-		/* pad a plaintext char at the end */
-		*(keyPtr + len + j) = *(plainPtr + i);
-		keyLength++;
-		i++;
-		j++;
-	}
+	padKey(plainPtr);
 
 	/* Fill the ciphertext array with encrypted chars */
 	while((c = *(plainPtr + plainIndex)) != '\0'){
@@ -388,8 +377,8 @@ void autoEncrypt(FILE *in, FILE *out, FILE *keyStream){
 void autoDecrypt(FILE *in, FILE *out, FILE *keyStream){
 	/* Set up pointers to our premade arrays */
 	extern char plaintext[], ciphertext[], key[], tabula[ALPHABET_SIZE][ALPHABET_SIZE];
-	char *plainPtr = plaintext, *cipherPtr = ciphertext, *keyPtr = key, (*tabulaPtr)[ALPHABET_SIZE] = tabula, c, cipherChar;
-	int plainLength, keyLength, cipherIndex = 0, keyIndex = 0, row, col;
+	char *plainPtr = plaintext, *cipherPtr = ciphertext, *keyPtr = key, (*tabulaPtr)[ALPHABET_SIZE] = tabula, c;
+	int cipherIndex = 0, keyIndex = 0, row, i = 0;
 
 	/* Load input arrays */
 	fgets(cipherPtr, BUFFER_SIZE, in);
@@ -402,14 +391,14 @@ void autoDecrypt(FILE *in, FILE *out, FILE *keyStream){
 	toUppercase(cipherPtr);
 	toUppercase(keyPtr);
 
-	/* Find valid char lengths for each string*/
-	plainLength = validCharLength(plainPtr);
-	keyLength = validCharLength(keyPtr);
-
 	/* Fill the plaintext array with decrypted chars */
 	while((c = *(cipherPtr + cipherIndex)) != '\0'){
 		/* Only decrypt char if it's in range */
 		if(c >= 'A' && c <= 'A' + ALPHABET_SIZE - 1){
+			/*Check if we need to pad the key */
+			if(keyIndex >= strlen(key)){
+				padKey(cipherPtr);
+			}
 			/* skip invalid chars in key*/
 			while(*(keyPtr + keyIndex) < 'A' || *(keyPtr + keyIndex) > 'A' + ALPHABET_SIZE - 1)
 				keyIndex++;
@@ -417,9 +406,21 @@ void autoDecrypt(FILE *in, FILE *out, FILE *keyStream){
 			keyIndex++;
 
 			/* Search the row for the ciphertext char */
-			while(*(cipherPtr + i))
-		}
+			i = 0;
+			while(*(*(tabulaPtr + row) + i) != c)
+				i++;
+
+			/* i has the index of the col of the decrypted char */
+			*(plainPtr + cipherIndex) = 'A' + i;
+		}else
+			*(plainPtr + cipherIndex) = c;
+
+		cipherIndex++;
 	}
+
+	/* Print the resultant plaintext string to the desired output */
+	fputs(plainPtr, out);
+	exit(EXIT_SUCCESS);
 }
 
 void createTabula(int n){
@@ -543,5 +544,28 @@ int validCharLength(char *stringPtr){
 	}
 
 	return length;
+}
+
+void padKey(char *reference){
+	extern char key[], plaintext[];
+	char *keyPtr = key, *plainPtr = plaintext;
+	int i = 0, j = 0, refLength, keyLength, end;
+
+	/* get the valid char lengths */
+	refLength = validCharLength(reference);
+	keyLength = validCharLength(keyPtr);
+	end = strlen(key);
+
+	/* Pad chars from plaintext until the valid lengths match */
+	while(keyLength < refLength){
+		/* Only pad valid chars */
+		while(*(plainPtr + i) < 'A' || *(plainPtr + i) > 'A' + ALPHABET_SIZE - 1)
+			i++;
+		/* pad a plaintext char at the end */
+		*(keyPtr + end + j) = *(plainPtr + i);
+		keyLength++;
+		i++;
+		j++;
+	}
 }
 
