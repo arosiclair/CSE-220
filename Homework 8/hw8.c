@@ -5,6 +5,10 @@ SBU ID: 109235970
 */
 
 #include "hw8.h"
+#include <assert.h>
+
+/* Function Prototypes */
+int isALetter(char c);
 
 /**
 * Calculates the length of a '\0' terminated string.
@@ -16,11 +20,10 @@ size_t hw_strlen(const char *str){
 	int i = 0;
 
 	/* Handle NULL reference special case */
-	if(str == NULL)
-		return 0;
-
-	while (*(str + i) != '\0')
-		i++;
+	if(str != NULL){
+		while (*(str + i) != '\0')
+			i++;
+	}
 
 	return i;
 }
@@ -32,6 +35,9 @@ size_t hw_strlen(const char *str){
 */
 int hw_strcmp(const char *str1, const char *str2){
 	int i = 0;
+
+	if(str1 == NULL || str2 == NULL)
+		return 0;
 
 	/* Compare string lengths first */
 	if(hw_strlen(str1) != hw_strlen(str2))
@@ -56,6 +62,10 @@ int hw_strcmp(const char *str1, const char *str2){
 char* hw_strncpy(char *dst, const char *src, size_t n){
 	int i;
 
+	/* Return NULL if either of the strings are NULL */
+	if(dst == NULL || src == NULL)
+		return NULL;
+
 	/* Check if n is invalid or 0 */
 	if (n <= 0)
 		return dst;
@@ -78,6 +88,9 @@ int hw_indexof(const char *str, char c){
 	int i = 0;
 	char temp;
 
+	if(str == NULL)
+		return -1;
+
 	while((temp = *(str + i)) != c){
 		if (temp == '\0') return -1;
 		i++;
@@ -94,6 +107,9 @@ void hw_reversestr(char *str){
 	int i = 0, end = 0;
 	char temp;
 
+	/* if str is NULL, do nothing */
+	if(str == NULL)
+		return;
 	/* get index of the end of the string */
 	while(*(str + end) != '\0')
 		end++;
@@ -124,18 +140,22 @@ int hw_equalsIgnoreCase(const char *str1, const char *str2){
 	int i;
 	char c1, c2;
 
+	if(str1 == NULL || str2 == NULL)
+		return 0;
+
 	/* Compare string lengths first */
 	if(hw_strlen(str1) != hw_strlen(str2))
 		return 0;
 
+	/* Loop through each char for each string */
 	for (i = 0; i < hw_strlen(str1); i++){
 		c1 = *(str1 + i);
 		c2 = *(str2 + i);
 
 		/* Ensure first char is a letter */
-		if ((c1 >= 'a' && c1 <= 'z') || (c1 >= 'A' && c1 <= 'Z')){
+		if (isALetter(c1)){
 			/* Ensure second char is a letter */
-			if((c2 >= 'a' && c2 <= 'z') || (c2 >= 'A' && c2 <= 'Z')){
+			if(isALetter(c2)){
 				/* Check if either letter is equal in any case */
 				if(c1 != c2 && (c1 + 32) != c2 && c1 != (c2 + 32))
 					return 0;
@@ -152,6 +172,15 @@ int hw_equalsIgnoreCase(const char *str1, const char *str2){
 	return 1;
 }
 
+int isALetter(char c){
+	if(c >= 'a' && c <= 'z')
+		return 1;
+	else if(c >= 'A' && c <= 'Z')
+		return 1;
+	else
+		return 0;
+}
+
 /**
 * Replace all characters in the pattern with another symbol.
 * @param str String to replace values that match the pattern.
@@ -162,6 +191,9 @@ void hw_replaceall(char *str, const char *pattern, char replacement){
 	int i = 0;
 	char c;
 
+	/* Do nothing if any of the parameters are NULL */
+	if(str == NULL || pattern == NULL)
+		return;
 	/* loop through each character in the string */
 	while((c = *(str + i)) != '\0'){
 		/* Check if we find the string character in the pattern */
@@ -169,4 +201,70 @@ void hw_replaceall(char *str, const char *pattern, char replacement){
 			*(str + i) = replacement;
 	}
 }
+
+/**
+* Searches a string for '\t' characters and replaces them with spaces.
+* @param str A '\0' terminated string to search tabs for.
+* @param tabsize The number of spaces to replace a tab with.
+* @return A dynamically allocated '\0' terminated string
+* If the operation fails it should return NULL.
+*/
+char* hw_expandtabs(const char *str, size_t tabsize){
+	char *result = (char *)malloc(sizeof(char));
+	char c;
+	/* numBytes will keep track of the size of our result array */
+	/* numElements will keep track of the capacity of the array */
+	int i = 0, j, numElements = 1, numBytes = sizeof(char);
+
+	/* Ensure malloc did not fail */
+	assert(result != NULL);
+
+	while((c = *(str + i)) != '\0'){
+		if(c == '\t'){
+			/* Attempt to allocate more space for a tab */
+			result = (char *) realloc(result, numBytes + tabsize * sizeof(char));
+			/* Add spaces at the end of the array */
+			for (j = 0; j < tabsize; j++)
+				*(result + numElements + j) = ' ';
+
+			/* Update number of elements and bytes*/
+			numElements += tabsize;
+			numBytes += tabsize * sizeof(char);
+		}else{
+			/* allocate more space to insert char */
+			result = (char *) realloc(result, numBytes + sizeof(char));
+			*(result + numElements) = c;
+
+			/* Update num of elements and bytes */
+			numElements += 1;
+			numBytes += sizeof(char);
+		}
+
+		i++;
+	}
+
+	return result;
+}
+
+/**
+* Splits on a character c and stores the pointers to the each separate
+* token in the return value.
+* @param str String to split.
+* @param c Character to search the string and split on.
+* @return Returns a 2D array containing the split tokens.
+* If the operation fails it should return NULL.
+*/
+char** hw_split(const char *str, char c){
+	int i, length = hw_strlen(str), numTokens = 0;
+	char **tokens;
+
+	for(i = 0; i < length; i++){
+		/* Check if we reached the splitting char */
+		if(*(str + i) == c){
+			
+		}
+	} 
+
+}
+
 
