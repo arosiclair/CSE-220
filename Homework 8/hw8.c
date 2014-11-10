@@ -10,6 +10,8 @@ SBU ID: 109235970
 /* Function Prototypes */
 int isALetter(char c);
 
+int main(){ return 0; }
+
 /**
 * Calculates the length of a '\0' terminated string.
 * (the null character is not part of the length)
@@ -65,10 +67,6 @@ char* hw_strncpy(char *dst, const char *src, size_t n){
 	/* Return NULL if either of the strings are NULL */
 	if(dst == NULL || src == NULL)
 		return NULL;
-
-	/* Check if n is invalid or 0 */
-	if (n <= 0)
-		return dst;
 
 	/* Assign each char from src to dst */
 	for(i = 0; i < n; i++){
@@ -255,16 +253,53 @@ char* hw_expandtabs(const char *str, size_t tabsize){
 * If the operation fails it should return NULL.
 */
 char** hw_split(const char *str, char c){
-	int i, length = hw_strlen(str), numTokens = 0;
-	char **tokens;
+	int i, length = hw_strlen(str), numTokens = 0, numBytes = sizeof(char);
+	char *copy = (char *)malloc(sizeof(char)); 
+	char **tokens = (char **)malloc(sizeof(char));
 
+	if(str == NULL)
+		return NULL;
+
+	/* Set the initial reference for tokens */
+	*tokens = copy;
+	numTokens++;
+	/* Copy the string and look for splitting chars */
 	for(i = 0; i < length; i++){
-		/* Check if we reached the splitting char */
+		/* Check if we reached a splitting char */
 		if(*(str + i) == c){
-			
+			/* Insert a null terminator to split the copy */
+			copy = (char *)realloc(copy, numBytes + 2*sizeof(char));
+			*(copy + i) = '\0';
+			/* Set a reference for the next token */
+			*(tokens + numTokens) = copy + i + 1;
+			numTokens++;
+			numBytes += 2*sizeof(char);
+		}else{
+			/* Not a splitting char so we just insert it into the copy */
+			copy = (char *)realloc(copy, numBytes + sizeof(char));
+			*(copy + i) = *(str + i);
+			numBytes += sizeof(char);
 		}
-	} 
+	}
+
+	return tokens;
+}
+
+/**
+* Find and replace all occurrences of find_str in str with replace_str.
+Note find_str
+* and replace_str can be of varying lengths, and not necessarily the same
+length.
+* @param str A '\0' character terminated string
+* @param find_str A '\0' character terminated string to search for
+* @param replace_str A '\0' character terminated string to replace with	
+* @param dst Place to store new string.
+* @return Returns the number of find_str's replaced
+*/
+int hw_findAndReplace(char **dst, const char *str, const char *find_str,
+const char* replace_str){
 
 }
+
 
 
