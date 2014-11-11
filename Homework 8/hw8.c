@@ -6,6 +6,7 @@ SBU ID: 109235970
 
 #include "hw8.h"
 #include <assert.h>
+#include <ctype.h>
 
 /* Function Prototypes */
 int isALetter(char c);
@@ -64,15 +65,22 @@ int hw_strcmp(const char *str1, const char *str2){
 */
 char* hw_strncpy(char *dst, const char *src, size_t n){
 	int i;
+	char *result = (char *)malloc(sizeof(char));
 
 	/* Return NULL if either of the strings are NULL */
 	if(dst == NULL || src == NULL)
 		return NULL;
 
-	/* Assign each char from src to dst */
+	/* Assign each char from src to result */
 	for(i = 0; i < n; i++){
-		*(dst + i) = *(src + i);
+		/* allocate more space in result */
+		result = realloc(result, (i + 1)*sizeof(char));
+		*(result + i) = *(src + i);
 	}
+	/* Null terminate */
+	result = realloc(result, (i + 1)*sizeof(char));
+	*(result + i) = '\0';
+	dst = result;
 
 	return dst;
 }
@@ -137,7 +145,7 @@ void hw_reversestr(char *str){
 */
 int hw_equalsIgnoreCase(const char *str1, const char *str2){
 	int i;
-	char c1, c2;
+	unsigned char c1, c2;
 
 	if(str1 == NULL || str2 == NULL)
 		return 0;
@@ -156,15 +164,15 @@ int hw_equalsIgnoreCase(const char *str1, const char *str2){
 			/* Ensure second char is a letter */
 			if(isALetter(c2)){
 				/* Check if either letter is equal in any case */
-				if(c1 != c2 && (c1 + 32) != c2 && c1 != (c2 + 32))
+				if(c1 != c2 && toupper(c1) != c2 && c1 != toupper(c2))
 					return 0;
 			}
 			/* Second char isn't a letter so just compare */
-			if(c1 != c2)
+			else if(c1 != c2)
 				return 0;
 		}
 		/* First char isn't a letter so just compare */
-		if(c1 != c2)
+		else if(c1 != c2)
 				return 0;
 	}
 
@@ -209,6 +217,7 @@ void hw_replaceall(char *str, const char *pattern, char replacement){
 * If the operation fails it should return NULL.
 */
 char* hw_expandtabs(const char *str, size_t tabsize){
+	return NULL;
 	char *result = (char *)malloc(sizeof(char));
 	char c;
 	/* numBytes will keep track of the size of our result array */
@@ -294,7 +303,7 @@ Note find_str
 length.
 * @param str A '\0' character terminated string
 * @param find_str A '\0' character terminated string to search for
-* @param replace_str A '\0' character terminated string to replace with	
+* @param replace_str A '\0' character terminated string to replace with
 * @param dst Place to store new string.
 * @return Returns the number of find_str's replaced
 */
@@ -433,4 +442,8 @@ void insertToken(char *result, int index, char **tokens, int token, const char *
 	}
 
 
+}
+
+int ec_findAndReplace(char **dst, const char *str, const char *find_str, const char* replace_str){
+	return 0;
 }
