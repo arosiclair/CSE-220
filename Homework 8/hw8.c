@@ -9,8 +9,9 @@ SBU ID: 109235970
 
 /* Function Prototypes */
 int isALetter(char c);
-
-int main(){ return 0; }
+int checkFindStr(const char *str, const char* find_str);
+void insertReplacement(char *str, const char *replacement, int numBytes);
+void insertToken(char *result, int index, char **tokens, int token, const char *delimiters);
 
 /**
 * Calculates the length of a '\0' terminated string.
@@ -217,9 +218,10 @@ char* hw_expandtabs(const char *str, size_t tabsize){
 	/* Ensure malloc did not fail */
 	assert(result != NULL);
 
+	/* Analyze each char of the input string */
 	while((c = *(str + i)) != '\0'){
 		if(c == '\t'){
-			/* Attempt to allocate more space for a tab */
+			/* Attempt to allocate more space in the result for a tab */
 			result = (char *) realloc(result, numBytes + tabsize * sizeof(char));
 			/* Add spaces at the end of the array */
 			for (j = 0; j < tabsize; j++)
@@ -229,7 +231,7 @@ char* hw_expandtabs(const char *str, size_t tabsize){
 			numElements += tabsize;
 			numBytes += tabsize * sizeof(char);
 		}else{
-			/* allocate more space to insert char */
+			/* allocate more space to insert non-tab char */
 			result = (char *) realloc(result, numBytes + sizeof(char));
 			*(result + numElements) = c;
 
@@ -296,10 +298,139 @@ length.
 * @param dst Place to store new string.
 * @return Returns the number of find_str's replaced
 */
-int hw_findAndReplace(char **dst, const char *str, const char *find_str,
-const char* replace_str){
+int hw_findAndReplace(char **dst, const char *str, const char *find_str, const char* replace_str){
+	int findLength, replaceLength, i = 0, numBytes = 0, numReplacements = 0;
+	char *copy = (char *)malloc(sizeof(char)), c;
+
+	if(find_str == NULL || replace_str == NULL)
+		return 0;
+
+	findLength = hw_strlen(find_str);
+	replaceLength = hw_strlen(replace_str);
+
+	/* Loop through each char in the input string */
+	while((c = *(str + i)) != '\0'){
+		/* Check if c is the first char of find_str and then verify it is the string we are looking for*/
+		if(c == *find_str && checkFindStr((str + i), find_str)){
+				/* Insert the replacement */
+				insertReplacement((copy + i), replace_str, numBytes);
+				numBytes += replaceLength*sizeof(char);
+				i += findLength;
+				numReplacements++;
+				continue;
+		}else{
+			/* we did not find the desired string so we just insert char */
+			copy = (char *)realloc(copy, numBytes + sizeof(char));
+			assert(copy != NULL);
+			*(copy + i) = *(str + i);
+			numBytes += sizeof(char);
+			i++;
+		}
+	}
+	/* Reassign str to our copy and return the number of replacements */
+	str = copy;
+	return numReplacements;
 
 }
 
 
 
+int checkFindStr(const char *str, const char* find_str){
+	int findLength = hw_strlen(find_str);
+	int i;
+
+	/* Verify each char in str matches find_str */
+	for(i = 0; i < findLength; i++){
+		if(*(str + i) != *(find_str + i))
+			return 0;
+	}
+
+	return 1;
+}
+
+void insertReplacement(char *str, const char *replacement, int numBytes){
+	int length = hw_strlen(replacement), i;
+
+	/* Allocate more space for the replacement string */
+	str = (char *)realloc(str, numBytes + length*sizeof(char));
+	assert(str != NULL);
+	/* Insert the chars of replacement into the string */
+	for(i = 0; i < length; i++){
+		*(str + i) = *(replacement + i);
+	}
+}
+
+/**
+* Split str into tokens, where each token is delimited by any of the
+characters given
+* in the delimiter string. Swap the i-th indexed token with the j-thindexed token
+* within the string, assuming the indexes start with 0. Parameter str
+should not be
+* physically tokenized, meaning is should be still printable as a single
+string.
+* @param str A '\0' character terminated string
+* @param i The first index of the token to swap
+* @param j The second index of the token to swap
+* @param delimiter Array of characters which should be considered
+delimiters
+*/
+void hw_swapTokens(char *str, size_t i, size_t j, const char
+*delimiters){
+	return;
+	int k = 0, l = 0, index = 0, numTokens = 0, length;
+	char **tokens = (char **)malloc(sizeof(char)), *result, c;
+
+	/* Do nothing if null references were passed */
+	if (str == NULL || delimiters == NULL)
+		return;
+
+	length = hw_strlen(str);
+	if(i < 0 || i >= length)
+		return;
+	if(j < 0 || j >= length)
+		return;
+
+	/* Set initial pointer for first token */
+	*(tokens) = str;
+	numTokens++;
+	/* Loop through each char in the string and set references for tokens */
+	while((c = *(str + k)) != '\0'){
+		/* Check if sthe char is a delimter */
+		if(hw_indexof(delimiters, c) != -1){
+			/* Find the next non delimeter char */
+			while(hw_indexof(delimiters, *(str + k)) != -1 && *(str + k) != '\0')
+				k++;
+			/* Set a reference for the next token */
+			*(tokens + numTokens) = (str + i);
+			numTokens++;
+			i++;
+		}else
+			i++;
+	}
+
+	/* Build the resultant string */
+	for(l = 0; l < numTokens; l++){
+		/* Check if this is a token that needs to be swapped */
+		if(l == i || l == j){
+
+		}
+		/* Insert token */
+		insertToken(result, index, tokens, l, delimiters);
+	}
+}
+
+void insertToken(char *result, int index, char **tokens, int token, const char *delimiters){
+	int i = 0;
+	char c;
+
+	/* Insert the token into the result including the following delim chars */
+	while((*(tokens + token) + i) != (*(tokens + token + 1))){
+		c = *(*(tokens + token) + i);
+		/* Insert the token char into our result */
+		*(result + index) = c;
+		index++;
+		i++;
+	}
+
+
+}
