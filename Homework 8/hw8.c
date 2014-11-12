@@ -206,6 +206,7 @@ void hw_replaceall(char *str, const char *pattern, char replacement){
 		/* Check if we find the string character in the pattern */
 		if(hw_indexof(pattern, c) != -1)
 			*(str + i) = replacement;
+		i++;
 	}
 }
 
@@ -217,21 +218,22 @@ void hw_replaceall(char *str, const char *pattern, char replacement){
 * If the operation fails it should return NULL.
 */
 char* hw_expandtabs(const char *str, size_t tabsize){
-	return NULL;
 	char *result = (char *)malloc(sizeof(char));
 	char c;
 	/* numBytes will keep track of the size of our result array */
-	/* numElements will keep track of the capacity of the array */
-	int i = 0, j, numElements = 1, numBytes = sizeof(char);
+	/* numElements will keep track of the number of chars */
+	int i = 0, j, numElements = 1, numBytes = 0;
 
 	/* Ensure malloc did not fail */
 	assert(result != NULL);
+	if(result == NULL) return NULL;
 
 	/* Analyze each char of the input string */
 	while((c = *(str + i)) != '\0'){
 		if(c == '\t'){
-			/* Attempt to allocate more space in the result for a tab */
+			/* alloc more space */
 			result = (char *) realloc(result, numBytes + tabsize * sizeof(char));
+			if(result == NULL) return NULL;
 			/* Add spaces at the end of the array */
 			for (j = 0; j < tabsize; j++)
 				*(result + numElements + j) = ' ';
@@ -242,10 +244,11 @@ char* hw_expandtabs(const char *str, size_t tabsize){
 		}else{
 			/* allocate more space to insert non-tab char */
 			result = (char *) realloc(result, numBytes + sizeof(char));
+			if(result == NULL) return NULL;
 			*(result + numElements) = c;
 
 			/* Update num of elements and bytes */
-			numElements += 1;
+			numElements++;
 			numBytes += sizeof(char);
 		}
 
@@ -264,9 +267,13 @@ char* hw_expandtabs(const char *str, size_t tabsize){
 * If the operation fails it should return NULL.
 */
 char** hw_split(const char *str, char c){
-	int i, length = hw_strlen(str), numTokens = 0, numBytes = sizeof(char);
-	char *copy = (char *)malloc(sizeof(char)); 
-	char **tokens = (char **)malloc(sizeof(char));
+	int i = 0, j = 0, length = hw_strlen(str), numTokens = 0, numBytes = sizeof(char);
+	char *copy = (char *)malloc(length*sizeof(char));
+	/* Ensure realloc didn't fail */
+	if(copy == NULL) return NULL; 
+	char **tokens = (char **)malloc(sizeof(char*));
+	/* Ensure realloc didn't fail */
+	if(tokens == NULL) return NULL;
 
 	if(str == NULL)
 		return NULL;
@@ -275,23 +282,37 @@ char** hw_split(const char *str, char c){
 	*tokens = copy;
 	numTokens++;
 	/* Copy the string and look for splitting chars */
-	for(i = 0; i < length; i++){
+	while(i < length){
 		/* Check if we reached a splitting char */
 		if(*(str + i) == c){
 			/* Insert a null terminator to split the copy */
-			copy = (char *)realloc(copy, numBytes + 2*sizeof(char));
-			*(copy + i) = '\0';
+			*(copy + j) = '\0';
+			/* Allocate space for another token */
+			tokens = (char **)realloc(tokens, (numTokens + 1)*sizeof(char*));
+			/* Ensure realloc didn't fail */
+			if(tokens == NULL) return NULL;
 			/* Set a reference for the next token */
-			*(tokens + numTokens) = copy + i + 1;
+			*(tokens + numTokens) = copy + j + 1;
+			/*Skip any additional delim chars*/
+			while(*(str +i) == c)
+				i++;
+			j++;
 			numTokens++;
 			numBytes += 2*sizeof(char);
 		}else{
 			/* Not a splitting char so we just insert it into the copy */
-			copy = (char *)realloc(copy, numBytes + sizeof(char));
-			*(copy + i) = *(str + i);
+			*(copy + j) = *(str + i);
 			numBytes += sizeof(char);
+			i++;
+			j++;
 		}
 	}
+
+	/* Allocate space for null terminating token */
+	tokens = (char **)realloc(tokens, (numTokens + 1)*sizeof(char*));
+	/* Ensure realloc didn't fail */
+	if(tokens == NULL) return NULL;
+	*(tokens + numTokens) = NULL;
 
 	return tokens;
 }
