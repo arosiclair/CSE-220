@@ -265,6 +265,9 @@ char** hw_split(const char *str, char c){
 	int i = 0, j = 0, length = hw_strlen(str), numTokens = 1, copyIndex;
 	char **tokens;
 
+	if(str == NULL)
+		return NULL;
+
 	/* Skip initial delims if they're there */
 	for(i = 0; str[i] == c; i++);
 	/* Ignore trailing delims if they're there */
@@ -300,12 +303,11 @@ char** hw_split(const char *str, char c){
 	while(tokens[copyIndex][i] != '\0'){
 		/* check if char is a delim */
 		if(tokens[copyIndex][i] == c){
-			/* insert null char */
-			tokens[copyIndex][i] = '\0';
-			i++;
-			/* Skip contiguous delims */
-			while(tokens[copyIndex][i] == c)
+			/* insert null chars */
+			while(tokens[copyIndex][i] == c){
+				tokens[copyIndex][i] = '\0';
 				i++;
+			}
 			/* set next token pointer */
 			if(tokens[copyIndex][i] != '\0')
 				tokens[j] = &tokens[copyIndex][i];
@@ -411,47 +413,104 @@ delimiters
 */
 void hw_swapTokens(char *str, size_t i, size_t j, const char
 *delimiters){
-	return;
-	int k = 0, l = 0, index = 0, numTokens = 0, length;
-	char **tokens = (char **)malloc(sizeof(char)), *result, c;
+	int k = 0, l = 0, m = 0, n = 0, numTokens = 1, length = hw_strlen(str);
+	char **tokens, *copy, *result;
 
 	/* Do nothing if null references were passed */
 	if (str == NULL || delimiters == NULL)
 		return;
-
-	length = hw_strlen(str);
-	if(i < 0 || i >= length)
-		return;
-	if(j < 0 || j >= length)
+	if (i < 0 || j < 0)
 		return;
 
-	/* Set initial pointer for first token */
-	*(tokens) = str;
-	numTokens++;
-	/* Loop through each char in the string and set references for tokens */
-	while((c = *(str + k)) != '\0'){
-		/* Check if sthe char is a delimter */
-		if(hw_indexof(delimiters, c) != -1){
-			/* Find the next non delimeter char */
-			while(hw_indexof(delimiters, *(str + k)) != -1 && *(str + k) != '\0')
-				k++;
-			/* Set a reference for the next token */
-			*(tokens + numTokens) = (str + i);
+	/* Skip initial delims if they're there */
+	for(k = 0; hw_indexof(delimiters, str[k]) != -1; k++);
+	/* Ignore trailing delims if they're there */
+	for(l = (length - 1); hw_indexof(delimiters, str[l]) != -1; l--);
+
+	/* Count the number of tokens */
+	while(k < l){
+		if(hw_indexof(delimiters, str[k]) != -1){
 			numTokens++;
-			i++;
-		}else
-			i++;
-	}
-
-	/* Build the resultant string */
-	for(l = 0; l < numTokens; l++){
-		/* Check if this is a token that needs to be swapped */
-		if(l == i || l == j){
-
+			/* Skip contiguous delims */
+			while(hw_indexof(delimiters, str[k]) != -1)
+				k++;
 		}
-		/* Insert token */
-		insertToken(result, index, tokens, l, delimiters);
+		k++;
 	}
+
+	/* Validate i and j */
+	if(i >= numTokens || j >= numTokens)
+		return;
+
+	/* Allocate space for token array */
+	tokens = (char **)malloc(numTokens*sizeof(char*));
+	if(tokens == NULL) return;
+
+	/* Allocate space for copy */
+	copy = (char *)malloc((length + 1)*sizeof(char));
+
+	/*Copy input str to copy*/
+	copy = hw_strncpy(copy, str, (length + 1));
+
+	/* skip initial delims, set first token pointer */
+	for(k = 0; hw_indexof(delimiters, copy[k]) != -1; k++);
+	tokens[n] = &copy[k];
+	n++;
+
+	/* Tokenize the rest of copy */
+	while(k < length){
+		/* check if char is one of the delims */
+		if(hw_indexof(delimiters, copy[k]) != -1){
+			/* insert null chars */
+			while(hw_indexof(delimiters, copy[k]) != -1){
+				copy[k] = '\0';
+				k++;
+			}
+			/* set next token reference */
+			if(copy[k] != '\0')
+				tokens[n] = &copy[k];
+			n++;
+		}else
+			k++;
+	}
+
+	/* allocate space for the result */
+	result = (char *)malloc((length + 1)*sizeof(char));
+	/* insert any intial delims */
+	for(k = 0; hw_indexof(delimiters, str[k]) != -1; k++)
+		result[k] = str[k];
+	m = k; /* m is index for original str */
+
+	/* insert each token and the following delims from orig str*/
+	for(l = 0; l < numTokens; l++){
+		/* handle swap conditions */
+		if(l == i){
+			/* copy token j into result instead */
+			hw_strncpy(&result[k], tokens[j], hw_strlen(tokens[j]));
+			k += hw_strlen(tokens[j]);
+			m += hw_strlen(tokens[l]);
+		}else if(l == j){
+			/* copy token i into result instead */
+			hw_strncpy(&result[k], tokens[i], hw_strlen(tokens[i]));
+			k += hw_strlen(tokens[i]);
+			m += hw_strlen(tokens[l]);
+		}else{
+			hw_strncpy(&result[k], tokens[l], hw_strlen(tokens[l]));
+			k += hw_strlen(tokens[l]);
+			m += hw_strlen(tokens[l]);
+		}
+
+		/* insert the delims following the token */
+		while(hw_indexof(delimiters, str[m]) != -1 && str[m] != '\0'){
+			result[k] = str[m];
+			m++;
+			k++;
+		}
+	}
+
+	/* copy our result into our original str */
+	hw_strncpy(str, result, length);
+
 }
 
 void insertToken(char *result, int index, char **tokens, int token, const char *delimiters){
