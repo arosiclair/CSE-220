@@ -65,22 +65,14 @@ int hw_strcmp(const char *str1, const char *str2){
 */
 char* hw_strncpy(char *dst, const char *src, size_t n){
 	int i;
-	char *result = (char *)malloc(sizeof(char));
 
 	/* Return NULL if either of the strings are NULL */
 	if(dst == NULL || src == NULL)
 		return NULL;
 
 	/* Assign each char from src to result */
-	for(i = 0; i < n; i++){
-		/* allocate more space in result */
-		result = realloc(result, (i + 1)*sizeof(char));
-		*(result + i) = *(src + i);
-	}
-	/* Null terminate */
-	result = realloc(result, (i + 1)*sizeof(char));
-	*(result + i) = '\0';
-	dst = result;
+	for(i = 0; i < n; i++)
+		*(dst + i) = *(src + i);
 
 	return dst;
 }
@@ -270,52 +262,59 @@ char* hw_expandtabs(const char *str, size_t tabsize){
 * If the operation fails it should return NULL.
 */
 char** hw_split(const char *str, char c){
-	int i = 0, j = 0, length = hw_strlen(str), numTokens = 0, numBytes = sizeof(char);
-	char *copy = (char *)malloc(length*sizeof(char));
-	/* Ensure realloc didn't fail */
-	if(copy == NULL) return NULL; 
-	char **tokens = (char **)malloc(sizeof(char*));
-	/* Ensure realloc didn't fail */
-	if(tokens == NULL) return NULL;
+	int i = 0, j = 0, length = hw_strlen(str), numTokens = 1, copyIndex;
+	char **tokens;
 
-	if(str == NULL)
-		return NULL;
-
-	/* Set the initial reference for tokens */
-	*tokens = copy;
-	numTokens++;
-	/* Copy the string and look for splitting chars */
-	while(i < length){
-		/* Check if we reached a splitting char */
-		if(*(str + i) == c){
-			/* Insert a null terminator to split the copy */
-			*(copy + j) = '\0';
-			/* Allocate space for another token */
-			tokens = (char **)realloc(tokens, (numTokens + 1)*sizeof(char*));
-			/* Ensure realloc didn't fail */
-			if(tokens == NULL) return NULL;
-			/* Set a reference for the next token */
-			*(tokens + numTokens) = copy + j + 1;
-			/*Skip any additional delim chars*/
-			while(*(str +i) == c)
-				i++;
-			j++;
+	/* Skip initial delims if they're there */
+	for(i = 0; str[i] == c; i++);
+	/* Ignore trailing delims if they're there */
+	for(j = (length - 1); str[j] == c; j--);
+	
+	/* Count the number of tokens */
+	while(i < j){
+		if(str[i] == c){
 			numTokens++;
-			numBytes += 2*sizeof(char);
-		}else{
-			/* Not a splitting char so we just insert it into the copy */
-			*(copy + j) = *(str + i);
-			numBytes += sizeof(char);
-			i++;
-			j++;
+			/* Skip contiguous delims */
+			while(str[i] == c)
+				i++;
 		}
+		i++;
 	}
 
-	/* Allocate space for null terminating token */
-	tokens = (char **)realloc(tokens, (numTokens + 1)*sizeof(char*));
-	/* Ensure realloc didn't fail */
+	/* Allocate enough space for tokens and the string */
+	tokens = (char **)malloc((numTokens + 2)*sizeof(char*));
+	tokens[numTokens + 1] = (char*)malloc((length + 1)*sizeof(char));
 	if(tokens == NULL) return NULL;
-	*(tokens + numTokens) = NULL;
+
+	copyIndex = numTokens + 1;
+
+	/* Copy the original str to the bottom of our tokens array */
+	hw_strncpy(tokens[copyIndex], str, (length + 1));
+
+	/* Skip initial delims and set first token reference */
+	for(i = 0; tokens[copyIndex][i] == c; i++);
+	j = 0; 
+	tokens[j] = &tokens[copyIndex][i];
+	j++;
+	/* replace delims in the copy with null chars and set pointers */
+	while(tokens[copyIndex][i] != '\0'){
+		/* check if char is a delim */
+		if(tokens[copyIndex][i] == c){
+			/* insert null char */
+			tokens[copyIndex][i] = '\0';
+			i++;
+			/* Skip contiguous delims */
+			while(tokens[copyIndex][i] == c)
+				i++;
+			/* set next token pointer */
+			if(tokens[copyIndex][i] != '\0')
+				tokens[j] = &tokens[copyIndex][i];
+			j++;
+		}else
+			i++;
+	}
+	/* null terminate the tokens */
+	tokens[j] = NULL;
 
 	return tokens;
 }
