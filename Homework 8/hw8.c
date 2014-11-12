@@ -11,7 +11,7 @@ SBU ID: 109235970
 /* Function Prototypes */
 int isALetter(char c);
 int checkFindStr(const char *str, const char* find_str);
-void insertReplacement(char *str, const char *replacement, int numBytes);
+void insertReplacement(char *str, const char *replacement, int numBytes, int index);
 void insertToken(char *result, int index, char **tokens, int token, const char *delimiters);
 
 /**
@@ -227,7 +227,7 @@ char* hw_expandtabs(const char *str, size_t tabsize){
 	/* Do nothing if any null parameters */
 	if(str == NULL)
 		return NULL;
-	
+
 	/* Ensure malloc did not fail */
 	if(result == NULL) return NULL;
 
@@ -332,7 +332,7 @@ length.
 * @return Returns the number of find_str's replaced
 */
 int hw_findAndReplace(char **dst, const char *str, const char *find_str, const char* replace_str){
-	int findLength, replaceLength, i = 0, numBytes = 0, numReplacements = 0;
+	int findLength, replaceLength, i = 0, j = 0, numBytes = 0, numReplacements = 0;
 	char *copy = (char *)malloc(sizeof(char)), c;
 
 	if(find_str == NULL || replace_str == NULL)
@@ -346,22 +346,25 @@ int hw_findAndReplace(char **dst, const char *str, const char *find_str, const c
 		/* Check if c is the first char of find_str and then verify it is the string we are looking for*/
 		if(c == *find_str && checkFindStr((str + i), find_str)){
 				/* Insert the replacement */
-				insertReplacement((copy + i), replace_str, numBytes);
+				insertReplacement(copy, replace_str, numBytes, j);
 				numBytes += replaceLength*sizeof(char);
 				i += findLength;
+				j += replaceLength;
 				numReplacements++;
 				continue;
 		}else{
 			/* we did not find the desired string so we just insert char */
 			copy = (char *)realloc(copy, numBytes + sizeof(char));
-			assert(copy != NULL);
-			*(copy + i) = *(str + i);
+			if(copy == NULL) return 0;
+			*(copy + j) = *(str + i);
 			numBytes += sizeof(char);
 			i++;
+			j++;
 		}
 	}
 	/* Reassign str to our copy and return the number of replacements */
-	str = copy;
+	*(copy + j) = '\0';
+	*dst = copy;
 	return numReplacements;
 
 }
@@ -381,15 +384,15 @@ int checkFindStr(const char *str, const char* find_str){
 	return 1;
 }
 
-void insertReplacement(char *str, const char *replacement, int numBytes){
+void insertReplacement(char *str, const char *replacement, int numBytes, int index){
 	int length = hw_strlen(replacement), i;
 
 	/* Allocate more space for the replacement string */
 	str = (char *)realloc(str, numBytes + length*sizeof(char));
-	assert(str != NULL);
+	/* assert(str != NULL); */
 	/* Insert the chars of replacement into the string */
 	for(i = 0; i < length; i++){
-		*(str + i) = *(replacement + i);
+		*(str + index + i) = *(replacement + i);
 	}
 }
 
