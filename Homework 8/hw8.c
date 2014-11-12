@@ -222,10 +222,13 @@ char* hw_expandtabs(const char *str, size_t tabsize){
 	char c;
 	/* numBytes will keep track of the size of our result array */
 	/* numElements will keep track of the number of chars */
-	int i = 0, j, numElements = 1, numBytes = 0;
+	int i = 0, j, numElements = 0, numBytes = 0;
 
+	/* Do nothing if any null parameters */
+	if(str == NULL)
+		return NULL;
+	
 	/* Ensure malloc did not fail */
-	assert(result != NULL);
 	if(result == NULL) return NULL;
 
 	/* Analyze each char of the input string */
