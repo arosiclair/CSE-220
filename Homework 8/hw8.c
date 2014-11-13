@@ -12,7 +12,6 @@ SBU ID: 109235970
 int isALetter(char c);
 int checkFindStr(const char *str, const char* find_str);
 void insertReplacement(char *str, const char *replacement, int numBytes, int index);
-void insertToken(char *result, int index, char **tokens, int token, const char *delimiters);
 
 /**
 * Calculates the length of a '\0' terminated string.
@@ -315,6 +314,11 @@ char** hw_split(const char *str, char c){
 		}else
 			i++;
 	}
+
+	/* Handle special case where only delims were passed */
+	if(tokens[0][0] == '\0'){
+		tokens[0] = NULL;
+	}
 	/* null terminate the tokens */
 	tokens[j] = NULL;
 
@@ -510,22 +514,6 @@ void hw_swapTokens(char *str, size_t i, size_t j, const char
 
 	/* copy our result into our original str */
 	hw_strncpy(str, result, length);
-
-}
-
-void insertToken(char *result, int index, char **tokens, int token, const char *delimiters){
-	int i = 0;
-	char c;
-
-	/* Insert the token into the result including the following delim chars */
-	while((*(tokens + token) + i) != (*(tokens + token + 1))){
-		c = *(*(tokens + token) + i);
-		/* Insert the token char into our result */
-		*(result + index) = c;
-		index++;
-		i++;
-	}
-
 
 }
 
