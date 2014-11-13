@@ -10,8 +10,8 @@ SBU ID: 109235970
 
 /* Function Prototypes */
 int isALetter(char c);
+void insertSpaces(char *str, int tabsize);
 int checkFindStr(const char *str, const char* find_str);
-void insertReplacement(char *str, const char *replacement, int numBytes, int index);
 int checkFindStrEC(const char *str, const char* find_str);
 
 /**
@@ -210,47 +210,53 @@ void hw_replaceall(char *str, const char *pattern, char replacement){
 * If the operation fails it should return NULL.
 */
 char* hw_expandtabs(const char *str, size_t tabsize){
-	char *result = (char *)malloc(sizeof(char));
-	char c;
+	char *result, c;
 	/* numBytes will keep track of the size of our result array */
 	/* numElements will keep track of the number of chars */
-	int i = 0, j, numElements = 0, numBytes = 0;
+	int i = 0, j = 0, numTabs = 0, length = hw_strlen(str), newLength;
 
 	/* Do nothing if any null parameters */
 	if(str == NULL)
 		return NULL;
 
-	/* Ensure malloc did not fail */
-	if(result == NULL) return NULL;
-
-	/* Analyze each char of the input string */
-	while((c = *(str + i)) != '\0'){
-		if(c == '\t'){
-			/* alloc more space */
-			result = (char *) realloc(result, numBytes + tabsize * sizeof(char));
-			if(result == NULL) return NULL;
-			/* Add spaces at the end of the array */
-			for (j = 0; j < tabsize; j++)
-				*(result + numElements + j) = ' ';
-
-			/* Update number of elements and bytes*/
-			numElements += tabsize;
-			numBytes += tabsize * sizeof(char);
-		}else{
-			/* allocate more space to insert non-tab char */
-			result = (char *) realloc(result, numBytes + sizeof(char));
-			if(result == NULL) return NULL;
-			*(result + numElements) = c;
-
-			/* Update num of elements and bytes */
-			numElements++;
-			numBytes += sizeof(char);
-		}
-
+	/* Count number of tab chars */
+	while(str[i] != '\0'){
+		if(str[i] == '\t')
+			numTabs++;
 		i++;
 	}
 
+	/* Calculate length of resultant string */
+	newLength = length - numTabs + numTabs*tabsize + 1;
+	/* Allocate enough space for result */
+	result = (char *)malloc(newLength*sizeof(char));
+	if(result == NULL) return NULL;
+
+	i = 0;
+	/* Loop through the original string, and create result string */
+	while((c = str[i]) != '\0'){
+		/* Check if the char is a tab */
+		if(c == '\t'){
+			insertSpaces((result + j), tabsize);
+			i++;
+			j += tabsize;
+		}else{
+			result[j] = str[i];
+			i++;
+			j++;
+		}
+	}
+
+	/* Null terminate */
+	result[j] = '\0';
 	return result;
+}
+
+void insertSpaces(char *str, int tabsize){
+	int i;
+
+	for(i = 0; i < tabsize; i++)
+		str[i] = ' ';
 }
 
 /**
@@ -388,8 +394,6 @@ int hw_findAndReplace(char **dst, const char *str, const char *find_str, const c
 
 }
 
-
-
 int checkFindStr(const char *str, const char* find_str){
 	int findLength = hw_strlen(find_str);
 	int i;
@@ -401,18 +405,6 @@ int checkFindStr(const char *str, const char* find_str){
 	}
 
 	return 1;
-}
-
-void insertReplacement(char *str, const char *replacement, int numBytes, int index){
-	int length = hw_strlen(replacement), i;
-
-	/* Allocate more space for the replacement string */
-	str = (char *)realloc(str, numBytes + length*sizeof(char));
-	/* assert(str != NULL); */
-	/* Insert the chars of replacement into the string */
-	for(i = 0; i < length; i++){
-		*(str + index + i) = *(replacement + i);
-	}
 }
 
 /**
