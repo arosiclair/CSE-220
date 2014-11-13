@@ -12,6 +12,7 @@ SBU ID: 109235970
 int isALetter(char c);
 int checkFindStr(const char *str, const char* find_str);
 void insertReplacement(char *str, const char *replacement, int numBytes, int index);
+int checkFindStrEC(const char *str, const char* find_str);
 
 /**
 * Calculates the length of a '\0' terminated string.
@@ -518,5 +519,55 @@ void hw_swapTokens(char *str, size_t i, size_t j, const char
 }
 
 int ec_findAndReplace(char **dst, const char *str, const char *find_str, const char* replace_str){
-	return 0;
+	int findLength, replaceLength, i = 0, j = 0, numBytes = 0, numReplacements = 0;
+	char *copy = (char *)malloc(sizeof(char)), c;
+
+	if(find_str == NULL || replace_str == NULL)
+		return 0;
+
+	findLength = hw_strlen(find_str);
+	replaceLength = hw_strlen(replace_str);
+
+	/* Loop through each char in the input string */
+	while((c = *(str + i)) != '\0'){
+		/* Check if c is the first char of find_str and then verify it is the string we are looking for*/
+		if((c == *find_str || *find_str == '*') && checkFindStrEC((str + i), find_str)){
+				/* Insert the replacement */
+				insertReplacement(copy, replace_str, numBytes, j);
+				numBytes += replaceLength*sizeof(char);
+				i += findLength;
+				j += replaceLength;
+				numReplacements++;
+				continue;
+		}else{
+			/* we did not find the desired string so we just insert char */
+			copy = (char *)realloc(copy, numBytes + sizeof(char));
+			if(copy == NULL) return 0;
+			*(copy + j) = *(str + i);
+			numBytes += sizeof(char);
+			i++;
+			j++;
+		}
+	}
+	/* Reassign str to our copy and return the number of replacements */
+	*(copy + j) = '\0';
+	*dst = copy;
+	return numReplacements;
+
+}
+
+int checkFindStrEC(const char *str, const char* find_str){
+	int findLength = hw_strlen(find_str);
+	int i;
+
+	/* Verify each char in str matches find_str */
+	for(i = 0; i < findLength; i++){
+		/* Do not compare against '*' chars in find_str */
+		if(str[i] != ' ' && find_str[i] == '*') 
+			continue;
+		if(*(str + i) != *(find_str + i))
+			return 0;
+	}
+
+	return 1;
 }
