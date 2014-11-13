@@ -288,6 +288,7 @@ char** hw_split(const char *str, char c){
 	tokens = (char **)malloc((numTokens + 2)*sizeof(char*));
 	tokens[numTokens + 1] = (char*)malloc((length + 1)*sizeof(char));
 	if(tokens == NULL) return NULL;
+	if (tokens[numTokens + 1] == NULL) return NULL;
 
 	copyIndex = numTokens + 1;
 
@@ -338,8 +339,8 @@ length.
 * @return Returns the number of find_str's replaced
 */
 int hw_findAndReplace(char **dst, const char *str, const char *find_str, const char* replace_str){
-	int findLength, replaceLength, i = 0, j = 0, numBytes = 0, numReplacements = 0;
-	char *copy = (char *)malloc(sizeof(char)), c;
+	int findLength, replaceLength, newLength, i = 0, j = 0, numReplacements = 0;
+	char c;
 
 	if(find_str == NULL || replace_str == NULL)
 		return 0;
@@ -347,30 +348,42 @@ int hw_findAndReplace(char **dst, const char *str, const char *find_str, const c
 	findLength = hw_strlen(find_str);
 	replaceLength = hw_strlen(replace_str);
 
-	/* Loop through each char in the input string */
-	while((c = *(str + i)) != '\0'){
+	/* Count the number of replacements */
+	while((c = str[i]) != '\0'){
 		/* Check if c is the first char of find_str and then verify it is the string we are looking for*/
 		if(c == *find_str && checkFindStr((str + i), find_str)){
-				/* Insert the replacement */
-				insertReplacement(copy, replace_str, numBytes, j);
-				numBytes += replaceLength*sizeof(char);
-				i += findLength;
-				j += replaceLength;
 				numReplacements++;
-				continue;
+		}
+		i++;
+	}
+
+	/* Calculate effective length of new string */
+	newLength = hw_strlen(str) - numReplacements*findLength + numReplacements*replaceLength + 1;
+
+	/* Allocate space for our newly modified str */
+	*dst = (char *)malloc(newLength*sizeof(char));
+	if(dst == NULL) return 0;
+
+	i = 0;
+	j = 0;
+	/* Loop through str again, insert replace_str where necessary */
+	while((c = str[i]) != '\0'){
+		/* insert the replacement instead */
+		if(c == *find_str && checkFindStr((str + i), find_str)){
+			hw_strncpy((*dst + j), replace_str, replaceLength);
+			i += findLength;
+			j += replaceLength;
 		}else{
-			/* we did not find the desired string so we just insert char */
-			copy = (char *)realloc(copy, numBytes + sizeof(char));
-			if(copy == NULL) return 0;
-			*(copy + j) = *(str + i);
-			numBytes += sizeof(char);
+			/* Other wise just copy the character */
+			dst[0][j] = str[i];
 			i++;
 			j++;
 		}
+
 	}
-	/* Reassign str to our copy and return the number of replacements */
-	*(copy + j) = '\0';
-	*dst = copy;
+	
+	/* Null terminate */
+	dst[0][j] = '\0';
 	return numReplacements;
 
 }
@@ -453,6 +466,7 @@ void hw_swapTokens(char *str, size_t i, size_t j, const char
 
 	/* Allocate space for copy */
 	copy = (char *)malloc((length + 1)*sizeof(char));
+	if(copy == NULL) return;
 
 	/*Copy input str to copy*/
 	copy = hw_strncpy(copy, str, (length + 1));
@@ -481,6 +495,7 @@ void hw_swapTokens(char *str, size_t i, size_t j, const char
 
 	/* allocate space for the result */
 	result = (char *)malloc((length + 1)*sizeof(char));
+	if (result == NULL) return;
 	/* insert any intial delims */
 	for(k = 0; hw_indexof(delimiters, str[k]) != -1; k++)
 		result[k] = str[k];
@@ -519,8 +534,8 @@ void hw_swapTokens(char *str, size_t i, size_t j, const char
 }
 
 int ec_findAndReplace(char **dst, const char *str, const char *find_str, const char* replace_str){
-	int findLength, replaceLength, i = 0, j = 0, numBytes = 0, numReplacements = 0;
-	char *copy = (char *)malloc(sizeof(char)), c;
+	int findLength, replaceLength, newLength, i = 0, j = 0, numReplacements = 0;
+	char c;
 
 	if(find_str == NULL || replace_str == NULL)
 		return 0;
@@ -528,30 +543,42 @@ int ec_findAndReplace(char **dst, const char *str, const char *find_str, const c
 	findLength = hw_strlen(find_str);
 	replaceLength = hw_strlen(replace_str);
 
-	/* Loop through each char in the input string */
-	while((c = *(str + i)) != '\0'){
+	/* Count the number of replacements */
+	while((c = str[i]) != '\0'){
 		/* Check if c is the first char of find_str and then verify it is the string we are looking for*/
 		if((c == *find_str || *find_str == '*') && checkFindStrEC((str + i), find_str)){
-				/* Insert the replacement */
-				insertReplacement(copy, replace_str, numBytes, j);
-				numBytes += replaceLength*sizeof(char);
-				i += findLength;
-				j += replaceLength;
 				numReplacements++;
-				continue;
+		}
+		i++;
+	}
+
+	/* Calculate effective length of new string */
+	newLength = hw_strlen(str) - numReplacements*findLength + numReplacements*replaceLength + 1;
+
+	/* Allocate space for our newly modified str */
+	*dst = (char *)malloc(newLength*sizeof(char));
+	if(dst == NULL) return 0;
+
+	i = 0;
+	j = 0;
+	/* Loop through str again, insert replace_str where necessary */
+	while((c = str[i]) != '\0'){
+		/* insert the replacement instead */
+		if((c == *find_str || *find_str == '*') && checkFindStrEC((str + i), find_str)){
+			hw_strncpy((*dst + j), replace_str, replaceLength);
+			i += findLength;
+			j += replaceLength;
 		}else{
-			/* we did not find the desired string so we just insert char */
-			copy = (char *)realloc(copy, numBytes + sizeof(char));
-			if(copy == NULL) return 0;
-			*(copy + j) = *(str + i);
-			numBytes += sizeof(char);
+			/* Other wise just copy the character */
+			dst[0][j] = str[i];
 			i++;
 			j++;
 		}
+
 	}
-	/* Reassign str to our copy and return the number of replacements */
-	*(copy + j) = '\0';
-	*dst = copy;
+	
+	/* Null terminate */
+	dst[0][j] = '\0';
 	return numReplacements;
 
 }
