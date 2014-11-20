@@ -46,11 +46,11 @@ void printHelp();
 void buildInstrList(char *instrFile, char *input, char *output);
 int* countNumInstr(char *file);
 FILE* openInput(char *input);
-void initializeTypes(struct InstrType **rType, struct InstrType **iType, struct InstrType **jType, int *numInstructions);
-void addRInstr(struct InstrType *rType, char *line, int numOfInstr);
-void addIInstr(struct InstrType *iType, char *line, int numOfInstr);
-void addJInstr(struct InstrType *jType, char *line, int numOfInstr);
-void printLists(InstrType rType, InstrType iType, InstrType jType);
+void initializeTypes(struct InstrType **rType, struct InstrType **iType, struct InstrType **jType);
+void addRInstr(struct InstrType **rType, char *line);
+void addIInstr(struct InstrType **iType, char *line);
+void addJInstr(struct InstrType **jType, char *line);
+void printLists(InstrType *rType, InstrType *iType, InstrType *jType);
 
 int main(int argc, char *argv[]){
 
@@ -125,32 +125,28 @@ void buildInstrList(char *instrFile, char *input, char *output){
 	FILE *instrList;
 	INSTRTYPE *rType, *iType, *jType;
 	char line[30];
-	int numR = 0, numI = 0, numJ = 0, *numInstructions;
 
 	/* Attempt to open and count the number of instructions */
-	numInstructions = countNumInstr(instrFile);
+	/* numInstructions = countNumInstr(instrFile); */
 
 	/* Open a new stream for parsing */
 	instrList = openInput(instrFile);
 
 	/* Initialize InstrType structs values and malloc space for instructions*/
-	initializeTypes(&rType, &iType, &jType, numInstructions);
+	initializeTypes(&rType, &iType, &jType);
 
 	/* Loop through each instruction in the stream*/
 	while(fgets(line, 30, instrList) != NULL){
 		/* Check first char first */
 		switch(*line){
 			case 'r':
-				addRInstr(rType, line, numR);
-				numR++;
+				addRInstr(&rType, line);
 				break;
 			case 'i':
-				addIInstr(iType, line, numI);
-				numI++;
+				addIInstr(&iType, line);
 				break;
 			case 'j':
-				addJInstr(jType, line, numJ);
-				numJ++;
+				addJInstr(&jType, line);
 				break;
 			default:
 				debug("incorrect instruction type parsed.\n");
@@ -234,22 +230,22 @@ FILE* openInput(char *input){
 	return file;
 }
 
-void initializeTypes(struct InstrType **rType, struct InstrType **iType, struct InstrType **jType, int *numInstructions){
+void initializeTypes(struct InstrType **rType, struct InstrType **iType, struct InstrType **jType){
 	
 	(*rType) = malloc(sizeof(INSTRTYPE));
 	(*rType)->type = 'R';
 	(*rType)->count = 0;
-	(*rType)->head = malloc(numInstructions[0]*sizeof(INSTRUCTION));
+	(*rType)->head = NULL;
 
 	(*iType) = malloc(sizeof(INSTRTYPE));
 	(*iType)->type = 'I';
 	(*iType)->count = 0;
-	(*iType)->head = malloc(numInstructions[1]*sizeof(INSTRUCTION));
+	(*iType)->head = NULL;
 
 	(*jType) = malloc(sizeof(INSTRTYPE));
 	(*jType)->type = 'J';
 	(*jType)->count = 0;
-	(*jType)->head = malloc(numInstructions[0]*sizeof(INSTRUCTION));
+	(*jType)->head = NULL;
 
 	(*rType)->prev = NULL;
 	(*rType)->next = *iType;
@@ -259,56 +255,53 @@ void initializeTypes(struct InstrType **rType, struct InstrType **iType, struct 
 	(*jType)->next = NULL;
 }
 
-void addRInstr(struct InstrType *rType, char *line, int numOfInstr){
-	INSTRUCTION *temp, *prev;
-	char *token, *mnemonic;
-	int UID, pretty, scanResult;
+void addRInstr(struct InstrType **rType, char *line){
+	INSTRUCTION *temp, *prev, *new;
+	char mnemonic[10];
+	int UID, pretty;
 
-	/* Parse UID */
-	token = strtok(line, " ");
-	token = strtok(NULL, " ");
-	if(token == NULL){
-		debug("Parsing UID failed.\n");
-		exit(EXIT_FAILURE);
-	}
-	/* Scan in hex UID */
-	scanResult = sscanf(token, "%8x", &UID);
-	if(scanResult <= 0){
-		debug("Scanning hex UID failed.\n");
-		exit(EXIT_FAILURE);
-	}
+	/* Parse the line for UID, mnemonic, and pretty value */
+	sscanf(line, "r %x %s %d", &UID, mnemonic, &pretty);
 
-	/* Parse mnemonic */
-	mnemonic = strtok(NULL, " ");
-	/* Parse pretty print format */
-	token = strtok(NULL, " ");
-	scanResult = sscanf(token, "%d", &pretty);
-
-
-	/* Add the instruction to the r-type list alphabetically */
+	/* Modify linkedlist to reference alphabetically */
+	temp = (*rType)->head;
+	prev = NULL;
 	/* Check if this is the first instruction */
-	if(numOfInstr == 0){
-		rType.head->uid = &instruction;
-		instruction.next = NULL;
-		instruction.prev = NULL;
+	if(temp == NULL){
+		/* Allocate memory at the head */
+		(*rType)->head = malloc(sizeof(INSTRUCTION));
+		/* initialize each of the values */
+		((*rType)->head)->uid = UID;
+		((*rType)->head)->pretty = pretty;
+		((*rType)->head)->mnemonic = malloc(strlen(mnemonic)*sizeof(char));
+		strcpy(((*rType)->head)->mnemonic, mnemonic);
+		((*rType)->head)->next = NULL;
+		((*rType)->head)->prev = NULL;
 	}else{
 		/* Otherwise insert instruction alphabetically*/
-		temp = rType.head;
-		prev = NULL;
+		new = malloc(sizeof(INSTRUCTION));
+		new->uid = UID;
+		new->pretty = pretty;
+		new->mnemonic = malloc(strlen(mnemonic)*sizeof(char));
+		strcpy(new->mnemonic, mnemonic);
+
 		while(temp != NULL){
 			/* compare to the next instruction in the list */
 			/* Insert if the mnemonic is comes before */
-			if(strcmp(instruction.mnemonic, temp->mnemonic) < 0){
-				temp->prev = &instruction;
-				instruction.next = temp;
-				instruction.prev = prev;
+			if(strcmp(mnemonic, temp->mnemonic) < 0){
 				/* If we are inserting to the front */
 				if(prev == NULL){
-					rType.head = &instruction;
+					((*rType)->head)->prev = new;
+					new->next = (*rType)->head;
+					(*rType)->head = new;
+					new->prev = NULL;
 					return;
 				}
 				else{
-					prev->next = &instruction;
+					prev->next = new;
+					new->prev = prev;
+					new->next = temp;
+					temp->prev = new;
 					return;
 				}
 			/* current instruction is greater so continue */
@@ -317,68 +310,65 @@ void addRInstr(struct InstrType *rType, char *line, int numOfInstr){
 				temp = prev->next;
 		}
 		/* have not inserted yet so we add to the end */
-		prev->next = &instruction;
-		instruction.prev = prev;
+		prev->next = new;
+		new->prev = prev;
+		new->next = NULL;
 		return;
 	}
 
 }
 
-void addIInstr(struct InstrType *iType, char *line, int numOfInstr){
-	INSTRUCTION instruction, *temp, *prev;
-	char *token, *mnemonic;
-	int UID, pretty, scanResult;
+void addIInstr(struct InstrType **iType, char *line){
+	INSTRUCTION *temp, *prev, *new;
+	char mnemonic[10];
+	int UID, pretty;
 
-	/* Parse UID */
-	token = strtok(line, " ");
-	token = strtok(NULL, " ");
-	if(token == NULL){
-		debug("Parsing UID failed.\n");
-		exit(EXIT_FAILURE);
-	}
-	/* Scan in hex UID */
-	scanResult = sscanf(token, "%8x", &UID);
-	if(scanResult <= 0){
-		debug("Scanning hex UID failed.\n");
-		exit(EXIT_FAILURE);
-	}
+	/* Parse the line for UID, mnemonic, and pretty value */
+	sscanf(line, "i %x %s %d", &UID, mnemonic, &pretty);
 
-	/* Parse mnemonic */
-	mnemonic = strtok(NULL, " ");
-	/* Parse pretty print format */
-	token = strtok(NULL, " ");
-	scanResult = sscanf(token, "%d", &pretty);
-
-	/* Initialize new instruction */
-	instruction.uid = UID;
-	instruction.pretty = pretty;
-	instruction.mnemonic = mnemonic;
-
-
-	/* Add the instruction to the r-type list alphabetically */
+	/* Modify linkedlist to reference alphabetically */
+	temp = (*iType)->head;
+	prev = NULL;
 	/* Check if this is the first instruction */
-	if(iType.head == NULL){
-		iType.head = &instruction;
-		instruction.next = NULL;
-		instruction.prev = NULL;
+	if(temp == NULL){
+		/* Allocate memory at the head */
+		(*iType)->head = malloc(sizeof(INSTRUCTION));
+		/* initialize each of the values */
+		((*iType)->head)->uid = UID;
+		((*iType)->head)->pretty = pretty;
+		((*iType)->head)->mnemonic = malloc(strlen(mnemonic)*sizeof(char));
+		if(((*iType)->head)->mnemonic == NULL){
+			debug("malloc failed for mnemonic\n");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(((*iType)->head)->mnemonic, mnemonic);
+		((*iType)->head)->next = NULL;
+		((*iType)->head)->prev = NULL;
 	}else{
 		/* Otherwise insert instruction alphabetically*/
-		temp = iType.head;
-		prev = NULL;
+		new = malloc(sizeof(INSTRUCTION));
+		new->uid = UID;
+		new->pretty = pretty;
+		new->mnemonic = malloc(strlen(mnemonic)*sizeof(char));
+		strcpy(new->mnemonic, mnemonic);
+
 		while(temp != NULL){
 			/* compare to the next instruction in the list */
 			/* Insert if the mnemonic is comes before */
-			if(strcmp(instruction.mnemonic, temp->mnemonic) < 0){
-				temp->prev = &instruction;
-				instruction.next = temp;
-				instruction.prev = prev;
+			if(strcmp(mnemonic, temp->mnemonic) < 0){
 				/* If we are inserting to the front */
 				if(prev == NULL){
-					iType.head = &instruction;
+					((*iType)->head)->prev = new;
+					new->next = (*iType)->head;
+					(*iType)->head = new;
+					new->prev = NULL;
 					return;
 				}
 				else{
-					prev->next = &instruction;
+					prev->next = new;
+					new->prev = prev;
+					new->next = temp;
+					temp->prev = new;
 					return;
 				}
 			/* current instruction is greater so continue */
@@ -387,68 +377,65 @@ void addIInstr(struct InstrType *iType, char *line, int numOfInstr){
 				temp = prev->next;
 		}
 		/* have not inserted yet so we add to the end */
-		prev->next = &instruction;
-		instruction.prev = prev;
+		prev->next = new;
+		new->prev = prev;
+		new->next = NULL;
 		return;
 	}
 
 }
 
-void addJInstr(struct InstrType *jType, char *line, int numOfInstr){
-	INSTRUCTION instruction, *temp, *prev;
-	char *token, *mnemonic;
-	int UID, pretty, scanResult;
+void addJInstr(struct InstrType **jType, char *line){
+	INSTRUCTION *temp, *prev, *new;
+	char mnemonic[10];
+	int UID, pretty;
 
-	/* Parse UID */
-	token = strtok(line, " ");
-	token = strtok(NULL, " ");
-	if(token == NULL){
-		debug("Parsing UID failed.\n");
-		exit(EXIT_FAILURE);
-	}
-	/* Scan in hex UID */
-	scanResult = sscanf(token, "%8x", &UID);
-	if(scanResult <= 0){
-		debug("Scanning hex UID failed.\n");
-		exit(EXIT_FAILURE);
-	}
+	/* Parse the line for UID, mnemonic, and pretty value */
+	sscanf(line, "j %x %s %d", &UID, mnemonic, &pretty);
 
-	/* Parse mnemonic */
-	mnemonic = strtok(NULL, " ");
-	/* Parse pretty print format */
-	token = strtok(NULL, " ");
-	scanResult = sscanf(token, "%d", &pretty);
-
-	/* Initialize new instruction */
-	instruction.uid = UID;
-	instruction.pretty = pretty;
-	instruction.mnemonic = mnemonic;
-
-
-	/* Add the instruction to the r-type list alphabetically */
+	/* Modify linkedlist to reference alphabetically */
+	temp = (*jType)->head;
+	prev = NULL;
 	/* Check if this is the first instruction */
-	if(jType.head == NULL){
-		jType.head = &instruction;
-		instruction.next = NULL;
-		instruction.prev = NULL;
+	if(temp == NULL){
+		/* Allocate memory at the head */
+		(*jType)->head = malloc(sizeof(INSTRUCTION));
+		/* initialize each of the values */
+		((*jType)->head)->uid = UID;
+		((*jType)->head)->pretty = pretty;
+		((*jType)->head)->mnemonic = malloc(strlen(mnemonic)*sizeof(char));
+		if(((*jType)->head)->mnemonic == NULL){
+			debug("malloc failed for mnemonic\n");
+			exit(EXIT_FAILURE);
+		}
+		strcpy(((*jType)->head)->mnemonic, mnemonic);
+		((*jType)->head)->next = NULL;
+		((*jType)->head)->prev = NULL;
 	}else{
 		/* Otherwise insert instruction alphabetically*/
-		temp = jType.head;
-		prev = NULL;
+		new = malloc(sizeof(INSTRUCTION));
+		new->uid = UID;
+		new->pretty = pretty;
+		new->mnemonic = malloc(strlen(mnemonic)*sizeof(char));
+		strcpy(new->mnemonic, mnemonic);
+
 		while(temp != NULL){
 			/* compare to the next instruction in the list */
 			/* Insert if the mnemonic is comes before */
-			if(strcmp(instruction.mnemonic, temp->mnemonic) < 0){
-				temp->prev = &instruction;
-				instruction.next = temp;
-				instruction.prev = prev;
+			if(strcmp(mnemonic, temp->mnemonic) < 0){
 				/* If we are inserting to the front */
 				if(prev == NULL){
-					jType.head = &instruction;
+					((*jType)->head)->prev = new;
+					new->next = (*jType)->head;
+					(*jType)->head = new;
+					new->prev = NULL;
 					return;
 				}
 				else{
-					prev->next = &instruction;
+					prev->next = new;
+					new->prev = prev;
+					new->next = temp;
+					temp->prev = new;
 					return;
 				}
 			/* current instruction is greater so continue */
@@ -457,31 +444,35 @@ void addJInstr(struct InstrType *jType, char *line, int numOfInstr){
 				temp = prev->next;
 		}
 		/* have not inserted yet so we add to the end */
-		prev->next = &instruction;
-		instruction.prev = prev;
+		prev->next = new;
+		new->prev = prev;
+		new->next = NULL;
 		return;
 	}
 
 }
 
-void printLists(InstrType rType, InstrType iType, InstrType jType){
+void printLists(InstrType *rType, InstrType *iType, InstrType *jType){
 	INSTRUCTION *temp;
 
-	printf("CSE220: R-Type List:\n");
-	temp = rType.head;
+	printf("\nCSE220: R-Type List:\n");
+	temp = rType->head;
 	while(temp != NULL){
-		printf("CSE220: %p uid: %d pretty: %d mnemonic: %s next: %p prev: %p\n", temp, temp->uid, temp->pretty, temp->mnemonic, temp->next, temp->prev);
+		printf("CSE220: %8p uid: %3d pretty: %2d mnemonic: %7s next: %8p prev: %8p\n", temp, temp->uid, temp->pretty, temp->mnemonic, temp->next, temp->prev);
+		temp = temp->next;
 	}
 
-	printf("CSE220: I-Type List:\n");
-	temp = iType.head;
+	printf("\nCSE220: I-Type List:\n");
+	temp = iType->head;
 	while(temp != NULL){
-		printf("CSE220: %p uid: %d pretty: %d mnemonic: %s next: %p prev: %p\n", temp, temp->uid, temp->pretty, temp->mnemonic, temp->next, temp->prev);
+		printf("CSE220: %8p uid: %3d pretty: %2d mnemonic: %7s next: %8p prev: %8p\n", temp, (temp->uid) >> 26, temp->pretty, temp->mnemonic, temp->next, temp->prev);
+		temp = temp->next;
 	}
 
-	printf("CSE220: J-Type List:\n");
-	temp = jType.head;
+	printf("\nCSE220: J-Type List:\n");
+	temp = jType->head;
 	while(temp != NULL){
-		printf("CSE220: %p uid: %d pretty: %d mnemonic: %s next: %p prev: %p\n", temp, temp->uid, temp->pretty, temp->mnemonic, temp->next, temp->prev);
+		printf("CSE220: %8p uid: %3d pretty: %2d mnemonic: %7s next: %8p prev: %8p\n", temp, (temp->uid) >> 26, temp->pretty, temp->mnemonic, temp->next, temp->prev);
+		temp = temp->next;
 	}
 }
