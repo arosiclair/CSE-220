@@ -46,11 +46,13 @@ void printHelp();
 void buildInstrList(char *instrFile, char *input, char *output);
 int* countNumInstr(char *file);
 FILE* openInput(char *input);
+FILE* openOutput(char *output);
 void initializeTypes(struct InstrType **rType, struct InstrType **iType, struct InstrType **jType);
 void addRInstr(struct InstrType **rType, char *line);
 void addIInstr(struct InstrType **iType, char *line);
 void addJInstr(struct InstrType **jType, char *line);
 void printLists(InstrType *rType, InstrType *iType, InstrType *jType);
+void parseBin(INSTRTYPE **instrTypes, char *input, char *output);
 
 int main(int argc, char *argv[]){
 
@@ -124,6 +126,7 @@ void printHelp(){
 void buildInstrList(char *instrFile, char *input, char *output){
 	FILE *instrList;
 	INSTRTYPE *rType, *iType, *jType;
+	INSTRTYPE *types[3];
 	char line[30];
 
 	/* Attempt to open and count the number of instructions */
@@ -154,11 +157,19 @@ void buildInstrList(char *instrFile, char *input, char *output){
 		}
 	}
 
+	/* Close the stream */
+	fclose(instrList);
+
 	/* Print lists for grading */
 	#ifdef CSE220
 		printLists(rType, iType, jType);
 	#endif
 
+	types[0] = rType;
+	types[1] = iType;
+	types[2] = jType;
+
+	parseBin(types, input, output);
 }
 
 int* countNumInstr(char *file){
@@ -228,6 +239,19 @@ FILE* openInput(char *input){
 	}
 
 	return file;
+}
+
+FILE* openOutput(char *output){
+	FILE *out;
+	if(strcmp(output, "-") == 0)
+		return stdout;
+	out = fopen(output, "w");
+	if (out == NULL){
+		debug("%s\n", "Failed to open output file");
+		exit(EXIT_FAILURE);
+	}
+
+	return out;
 }
 
 void initializeTypes(struct InstrType **rType, struct InstrType **iType, struct InstrType **jType){
@@ -475,4 +499,28 @@ void printLists(InstrType *rType, InstrType *iType, InstrType *jType){
 		printf("CSE220: %8p uid: %3d pretty: %2d mnemonic: %7s next: %8p prev: %8p\n", temp, (temp->uid) >> 26, temp->pretty, temp->mnemonic, temp->next, temp->prev);
 		temp = temp->next;
 	}
+}
+
+void parseBin(INSTRTYPE **instrTypes, char *input, char *output){
+	FILE *bin, *out;
+	int word, bigEndian = 0;
+	short x;
+
+	/* open input stream */
+	bin = openInput(input);
+	out = openOutput(output);
+
+	/* Check endianess */
+	if(*(char)8x == 0x12)
+		bigEndian = 1;
+
+	/* read in the first 4 bytes */
+	fread(&word, 1, 4, bin);
+	if(word != 0x576F6E67){
+		debug("BOM did not checkout. BOM: %x\n", word);
+		exit(EXIT_SUCCESS);
+	}
+
+
+
 }
