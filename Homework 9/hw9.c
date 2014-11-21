@@ -5,9 +5,12 @@ SBU ID: 109235970
 */
 
 #include "hw9.h"
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <netinet/in.h> /* For identifying endianess */
 
 /* Debugging macros */
 #ifdef DEBUG
@@ -42,9 +45,9 @@ char *helpPrompt = "Usage: ./a.out [-h] [-m INSTRUCTION_MAPPING] -i INPUT_FILE -
 
 /* Function prototypes */
 void handleFlags(int argc, char *argv[]);
-void printHelp();
+void printHelp(int failure);
 void buildInstrList(char *instrFile, char *input, char *output);
-int* countNumInstr(char *file);
+void verifyStreams(char *stream1, char *stream2, char *stream3);
 FILE* openInput(char *input);
 FILE* openOutput(char *output);
 void initializeTypes(struct InstrType **rType, struct InstrType **iType, struct InstrType **jType);
@@ -53,6 +56,14 @@ void addIInstr(struct InstrType **iType, char *line);
 void addJInstr(struct InstrType **jType, char *line);
 void printLists(InstrType *rType, InstrType *iType, InstrType *jType);
 void parseBin(INSTRTYPE **instrTypes, char *input, char *output);
+int verifyBOM(int word);
+int toBE(int word);
+int getInstrType(int word);
+int getUID(int word, int type);
+INSTRUCTION * findInstruction(INSTRTYPE *type, int UID);
+void writeInstruction(INSTRUCTION *instr, int word, int instrType, FILE *output);
+void printStats(INSTRTYPE **types);
+void freeMemory(INSTRTYPE **types);
 
 int main(int argc, char *argv[]){
 
@@ -72,9 +83,9 @@ void handleFlags(int argc, char *argv[]){
 
 	char *instrFile = NULL, *input, *output;
 
-	/* Handle no options given */
+	/* No options given */
 	if(argc <= 1)
-		printHelp();
+		printHelp(1);
 
 	/* Process each opt and arg with getopt */
 	while((opt = getopt(argc, argv, validOpts)) != -1){
@@ -95,13 +106,14 @@ void handleFlags(int argc, char *argv[]){
 				output = optarg;
 				break;
 			default:
+				printHelp(1);
 				exit(EXIT_FAILURE);
 		}
 	}
 
 	/* Print the help prompt if requested */
 	if(h){
-		printHelp();
+		printHelp(0);
 	}
 
 	/* Handle default instructions list */
@@ -112,14 +124,18 @@ void handleFlags(int argc, char *argv[]){
 	if(i && o)
 		buildInstrList(instrFile, input, output);
 	/* Otherwise there weren't enough options and args passed */
-	else
+	else{
+		printHelp(1);
 		exit(EXIT_FAILURE);
+	}
 }
 
-void printHelp(){
+void printHelp(int failure){
 	extern char *helpPrompt;
 
 	printf("%s", helpPrompt);
+	if(failure)
+		exit(EXIT_FAILURE);
 	exit(EXIT_SUCCESS);
 }
 
@@ -129,10 +145,10 @@ void buildInstrList(char *instrFile, char *input, char *output){
 	INSTRTYPE *types[3];
 	char line[30];
 
-	/* Attempt to open and count the number of instructions */
-	/* numInstructions = countNumInstr(instrFile); */
+	/* Verify files are not the same */
+	verifyStreams(instrFile, input, output);
 
-	/* Open a new stream for parsing */
+	/* Attempt to open streams for parsing */
 	instrList = openInput(instrFile);
 
 	/* Initialize InstrType structs values and malloc space for instructions*/
@@ -172,65 +188,6 @@ void buildInstrList(char *instrFile, char *input, char *output){
 	parseBin(types, input, output);
 }
 
-int* countNumInstr(char *file){
-	char c, prev;
-	/* Index 0: r-type, 1: i-type, 2: j-type. */
-	int *numInstructions = (int *)malloc(3*sizeof(int));
-
-	/* Attempt to open stream */
-	FILE *stream = fopen(file, "r");
-	if (stream == NULL){
-		debug("%s\n", "Failed to open instrlist file\n");
-		exit(EXIT_FAILURE);
-	}
-
-	/* count first instruction */
-	c = fgetc(stream);
-	switch(c){
-		case 'r':
-			numInstructions[0]++;
-			break;
-		case 'i':
-			numInstructions[1]++;
-			break;
-		case 'j':
-			numInstructions[2]++;
-			break;
-		default:
-			debug("Failed to count first instr type\n");
-			exit(EXIT_FAILURE);
-	}
-
-	prev = c;
-
-	/* count number of each instr type */
-	while((c = fgetc(stream)) != EOF){
-		/* Check if we previously read a new line char */
-		if (prev == '\n'){
-			/* count based on the char we just read */
-			switch(c){
-				case 'r':
-					numInstructions[0]++;
-					break;
-				case 'i':
-					numInstructions[1]++;
-					break;
-				case 'j':
-					numInstructions[2]++;
-					break;
-				default:
-					debug("Failed to count instr type\n");
-					exit(EXIT_FAILURE);
-			}
-		}
-		prev = c;
-	}
-
-	/* Close the stream */
-	fclose(stream);
-	return numInstructions;
-}
-
 FILE* openInput(char *input){
 	FILE *file = fopen(input, "r");
 	if (file == NULL){
@@ -252,6 +209,72 @@ FILE* openOutput(char *output){
 	}
 
 	return out;
+}
+
+void verifyStreams(char *instrFile, char *input, char *output){
+	struct stat *s1 = malloc(sizeof(struct stat)), *s2 = malloc(sizeof(struct stat)), *s3 = malloc(sizeof(struct stat));
+	FILE *fp;
+	long size;
+
+	/* Load stat info */
+	stat(instrFile, s1);
+	stat(input, s2);
+	stat(output, s3);
+
+	/* Compare st_ino values */
+	if(s1->st_ino == s2->st_ino){
+		debug("Multiple files are the same\n");
+		exit(EXIT_FAILURE);
+	}else if(s2->st_ino == s3->st_ino){
+		debug("Multiple files are the same\n");
+		exit(EXIT_FAILURE);
+	}else if(s1->st_ino == s3->st_ino){
+		debug("Multiple files are the same\n");
+		exit(EXIT_FAILURE);
+	}
+
+	free(s1);
+	free(s2);
+	free(s3);
+
+	/* check that we can open the fieles */
+	fp = fopen(instrFile, "r");
+	if(fp == NULL){
+		debug("Instruction file failed to open.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	fclose(fp);
+
+	fp = fopen(input, "r");
+	if(fp == NULL){
+		debug("Binary file failed to open.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	/* check size of binary file */
+	fseek(fp, 0L, SEEK_END);
+	size = ftell(fp);
+	if((size % 4) != 0){
+		debug("Size of binary file is not a multiple of 4.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	fclose(fp);
+
+	/* Don't check output if stdout was chosen */
+	if(strcmp(output, "-") != 0){
+		fp = fopen(output, "w");
+		if(fp == NULL){
+			debug("Output file failed to open.\n");
+			exit(EXIT_FAILURE);
+		}
+
+		fclose(fp);
+	}
+
+	return;
+
 }
 
 void initializeTypes(struct InstrType **rType, struct InstrType **iType, struct InstrType **jType){
@@ -501,26 +524,289 @@ void printLists(InstrType *rType, InstrType *iType, InstrType *jType){
 	}
 }
 
+/* Parses the binary file for each 32-bit MIPS instruction */
 void parseBin(INSTRTYPE **instrTypes, char *input, char *output){
 	FILE *bin, *out;
-	int word, bigEndian = 0;
-	short x;
+	int word, type, UID;
+	INSTRUCTION *match;
+	/* instrTypes[0] = rType, [1] = iType, [2] = jType */
 
 	/* open input stream */
 	bin = openInput(input);
 	out = openOutput(output);
 
-	/* Check endianess */
-	if(*(char)8x == 0x12)
-		bigEndian = 1;
 
 	/* read in the first 4 bytes */
 	fread(&word, 1, 4, bin);
-	if(word != 0x576F6E67){
+
+	/* Verify BOM based on endianess */
+	if(!verifyBOM(word)){
 		debug("BOM did not checkout. BOM: %x\n", word);
+		freeMemory(instrTypes);
+		fclose(bin);
+		fclose(out);
 		exit(EXIT_SUCCESS);
 	}
 
+	/* Read 4 bytes for each instruction until we reach the end of the file */
+	while(fread(&word, 1, 4, bin) != 0){
+		/* convert to big endian if necessary */
+		if(htonl(42) != 42)
+			word = toBE(word);
+		/* Get the instr type */
+		type = getInstrType(word);
+		/* get UID based on instr type */
+		UID = getUID(word, type);
+		/* find the matching instruction from the appropriate list */
+		match = findInstruction(instrTypes[type], UID);
+
+		/*write to the output */
+		writeInstruction(match, word, type, out);
+
+	}
+
+	#ifdef CSE220
+		/* Print statistics */
+		printStats(instrTypes);
+	#endif
+
+	/* Free memory */
+	freeMemory(instrTypes);
+	/* close streams */
+	fclose(bin);
+	fclose(out);
+
+}
+
+int verifyBOM(int word){
+	if(htonl(42) == 42){
+		/* Big Endian */
+		if(word == 0x576F6E67)
+			return 1;
+	}else{
+		/* Little Endian */
+		if(word == 0x676E6F57)
+			return 1;
+	}
+
+	return 0;
+}
+
+int toBE(int word){
+	/* Holds each shifted bytes for BE */
+	int one, two, three, four, result;
+
+	one = (word & 0x000000FF) << 24;
+	two = (word & 0x0000FF00) << 8;
+	three = (word & 0x00FF0000) >> 8;
+	four = (word & 0xFF000000) >> 24;
+
+	result = one | two | three | four;
+	return result;
+}
+
+int getInstrType(int word){
+	word &= 0xFC000000;
+	word >>= 26;
+
+	switch(word){
+		/* 0 = R-Type */
+		case 0:
+			return 0;
+		/* 2 or 3 = J-Type */
+		case 2:
+			return 2;
+		case 3:
+			return 2;
+		/* Anything else = I-Type */
+		default:
+			return 1;
+	}
+}
+
+int getUID(int word, int type){
+	int uid;
+
+	switch(type){
+		case 0:
+			uid = word & 0x0000003F;
+			break;
+		case 1:
+			uid = word & 0xFC000000;
+			break;
+		case 2:
+			uid = word & 0xFC000000;
+			break;
+		default:
+			debug("The wrong type was passed. Type: %d\n", type);
+			exit(EXIT_FAILURE);
+	}
+
+	return uid;
+}
+
+INSTRUCTION * findInstruction(INSTRTYPE *type, int UID){
+	INSTRUCTION *temp;
+
+	temp = type->head;
+	while(temp != NULL){
+		if(temp->uid == UID)
+			return temp;
+		else
+			temp = temp->next;
+	}
+
+	debug("Matching instruction not found. UID: %d\n", UID);
+	exit(EXIT_FAILURE);
+}
+
+void writeInstruction(INSTRUCTION *instr, int word, int instrType, FILE *output){
+	int rs = 0, rt = 0, rd = 0, shamt, imm = 0, addr = 0;
+	/* Array of shorthand register names */
+	char *registers[] = {
+		"$zero","$at",
+		"$v0","$v1",
+		"$a0","$a1","$a2","$a3",
+		"$t0","$t1","$t2","$t3","$t4","$t5","$t6","$t7",
+		"$s0","$s1","$s2","$s3","$s4","$s5","$s6","$s7",
+		"$t8","$t9","$k0","$k1",
+		"$gp","$sp","$fp","$ra"
+	};
+	char *mnemonic = instr->mnemonic;
+
+	/* Parse instruction fields based on type */
+	switch(instrType){
+		/* R-type */
+		case 0:
+			rs = (word & 0x03E00000) >> 21;
+			rt = (word & 0x001F0000) >> 16;
+			rd = (word & 0x0000F800) >> 11;
+			shamt = (word & 0x000007C0) >> 6;
+			break;
+		/* I-Type */
+		case 1:
+			rs = (word & 0x03E00000) >> 21;
+			rt = (word & 0x001F0000) >> 16;
+			imm = (word & 0x0000FFFF);
+			break;
+		case 2:
+			addr = (word & 0x03FFFFFF);
+			break;
+		default:
+			debug("The wrong type was passed. Type: %d\n", instrType);
+			exit(EXIT_FAILURE);
+	}
+
+	/* Write to output based on the pretty value */
+	switch(instr->pretty){
+		case 0:
+			fprintf(output, "%s %s\n", mnemonic, registers[rd]);
+			break;
+		case 1:
+			fprintf(output, "%s %s, %s\n", mnemonic, registers[rs], registers[rt]);
+			break;
+		case 2:
+			fprintf(output, "%s %s, %s, 0x%X\n", mnemonic, registers[rt], registers[rs], imm);
+			break;
+		case 3:
+			fprintf(output, "%s %s, %s, %s\n", mnemonic, registers[rd], registers[rt], registers[rs]);
+			break;
+		case 4:
+			fprintf(output, "%s %s, 0x%X(%s)\n", mnemonic, registers[rt], imm, registers[rs]);
+			break;
+		case 5:
+			fprintf(output, "%s\n", mnemonic);
+			break;
+		case 6:
+			fprintf(output, "%s 0x%X\n", mnemonic, addr);
+			break;
+		case 7:
+			fprintf(output, "%s %s, 0x%X\n", mnemonic, registers[rs], imm);
+			break;
+		case 8:
+			fprintf(output, "%s %s, %s, 0x%X\n", mnemonic, registers[rd], registers[rs], shamt);
+			break;
+		case 9:
+			fprintf(output, "%s %s, %s, 0x%X\n", mnemonic, registers[rs], registers[rt], imm);
+			break;
+	}
+}
+
+void printStats(INSTRTYPE **types){
+	int numR = 0, numI = 0, numJ = 0, instrSize, typeSize, mnemonicSize = 0, total;
+	INSTRUCTION *temp;
+
+	/* count R-type */
+	temp = types[0]->head;
+	while(temp != NULL){
+		numR++;
+		mnemonicSize += sizeof(temp->mnemonic);
+		temp = temp->next;
+	}
+
+	/* count I-type */
+	temp = types[1]->head;
+	while(temp != NULL){
+		numI++;
+		mnemonicSize += sizeof(temp->mnemonic);
+		temp = temp->next;
+	}
+
+	/* count J-type */
+	temp = types[2]->head;
+	while(temp != NULL){
+		numJ++;
+		mnemonicSize += sizeof(temp->mnemonic);
+		temp = temp->next;
+	}
+
+	instrSize = sizeof(INSTRUCTION);
+	typeSize = sizeof(INSTRTYPE);
+	total = 3*typeSize + (numR + numI + numJ)*instrSize + mnemonicSize;
+
+	printf("CSE220: There is %d r-type, %d i-type, and %d j-type nodes.\n", numR, numI, numJ);
+	printf("CSE220: The InstrType node takes up %d bytes in memory.\n", typeSize);
+	printf("CSE220: The Instr node takes up %d bytes in memory\n", instrSize);
+	printf("CSE220: Your program allocated %d nodes that take up %d bytes in memory\n", numR + numI + numJ + 3, total);
+}
+
+void freeMemory(INSTRTYPE **types){
+	INSTRUCTION *next, *current;
+
+	/* loop through each instruction list and free the mnemonic then instruction */
+	/* R-type */
+	next = types[0]->head;
+	current = next;
+	while(next != NULL){
+		free(next->mnemonic);
+		next = next->next;
+		free(current);
+		current = next;
+	}
 
 
+	/* I-type */
+	next = types[1]->head;
+	current = next;
+	while(next != NULL){
+		free(next->mnemonic);
+		next = next->next;
+		free(current);
+		current = next;
+	}
+
+	/* J-type */
+	next = types[2]->head;
+	current = next;
+	while(next != NULL){
+		free(next->mnemonic);
+		next = next->next;
+		free(current);
+		current = next;
+	}
+
+	/* Free the InstrTypes */
+	free(types[0]);
+	free(types[1]);
+	free(types[2]);
 }
